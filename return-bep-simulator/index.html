@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반품 BEP & 수익률 시뮬레이터</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+        .container { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar h1 { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+        .sidebar .subtitle { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+
+        .section { margin-bottom: 20px; }
+        .section-title {
+            font-size: 12px; font-weight: 600; color: #64748b;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            margin-bottom: 10px; padding-bottom: 5px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .field { margin-bottom: 8px; }
+        .field label {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; color: #475569; margin-bottom: 3px;
+        }
+        .field label .unit { font-size: 11px; color: #94a3b8; }
+        .field input[type="number"], .field select {
+            width: 100%; padding: 7px 10px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 13px; outline: none; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .field input:focus, .field select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+        .field .computed { font-size: 14px; font-weight: 600; color: #3b82f6; padding: 4px 0; }
+
+        .presets { display: flex; gap: 5px; margin-bottom: 12px; }
+        .presets button {
+            flex: 1; padding: 5px 6px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
+            background: #fff; font-size: 11px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .presets button:hover { background: #f1f5f9; }
+        .presets button.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+        .field-row { display: flex; gap: 8px; }
+        .field-row .field { flex: 1; }
+
+        /* Main */
+        .main { flex: 1; padding: 20px; overflow-y: auto; }
+
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .metric-card {
+            background: #fff; border-radius: 10px; padding: 14px;
+            border: 1px solid #e2e8f0;
+        }
+        .metric-card .label { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+        .metric-card .value { font-size: 22px; font-weight: 700; }
+        .metric-card .desc { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+        .mc-positive .value { color: #16a34a; }
+        .mc-negative .value { color: #dc2626; }
+        .mc-neutral .value { color: #3b82f6; }
+        .mc-warn .value { color: #d97706; }
+
+        .chart-container {
+            background: #fff; border-radius: 10px; padding: 16px;
+            border: 1px solid #e2e8f0; margin-bottom: 14px;
+        }
+        .chart-container h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #334155; }
+        .chart-wrapper { position: relative; height: 260px; }
+
+        .summary-table {
+            background: #fff; border-radius: 10px; padding: 16px;
+            border: 1px solid #e2e8f0;
+        }
+        .summary-table h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #334155; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th {
+            text-align: left; padding: 7px 10px;
+            border-bottom: 2px solid #e2e8f0;
+            color: #64748b; font-weight: 600; font-size: 11px;
+        }
+        td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+        tr.bep-row { background: #fef3c7; }
+        .pos { color: #16a34a; font-weight: 600; }
+        .neg { color: #dc2626; font-weight: 600; }
+
+        .error-msg {
+            background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+            padding: 8px 12px; border-radius: 6px; font-size: 12px;
+            margin-bottom: 14px; display: none;
+        }
+
+        .formula-ref {
+            margin-top: 8px; padding: 10px; background: #f8fafc;
+            border-radius: 6px; font-size: 11px; color: #64748b; line-height: 1.6;
+        }
+        .formula-ref code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-size: 10px; }
+
+        @media (max-width: 960px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <h1>반품 BEP 시뮬레이터</h1>
+        <p class="subtitle">변수를 조정하여 BEP 반품률과 수익률을 실시간 시뮬레이션</p>
+
+        <div class="section">
+            <div class="section-title">마진 설정</div>
+            <div class="presets">
+                <button onclick="applyMargin('low')" id="pm-low">저마진 ~22%</button>
+                <button onclick="applyMargin('mid')" id="pm-mid">중마진 ~40%</button>
+                <button onclick="applyMargin('high')" id="pm-high" class="active">프리미엄 ~60%</button>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>판매가 <span class="unit">$</span></label>
+                    <input type="number" id="price" value="550" step="10" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label>매출원가 <span class="unit">$</span></label>
+                    <input type="number" id="cogs" value="220" step="10" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label>매출총이익률</label>
+                <div class="computed" id="disp-margin">60.0%</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">반품 비용</div>
+            <div class="field-row">
+                <div class="field">
+                    <label>배송비 (왕복) <span class="unit">$</span></label>
+                    <input type="number" id="shipping" value="30" step="5" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label>검수/재입고 <span class="unit">$</span></label>
+                    <input type="number" id="labor" value="20" step="5" oninput="calc()">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>포장재 손실 <span class="unit">$</span></label>
+                    <input type="number" id="packaging" value="10" step="5" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label>잔존가치 (회수) <span class="unit">$</span></label>
+                    <input type="number" id="salvage" value="10" step="5" oninput="calc()">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">반품 모델 (Weibull)</div>
+            <div class="field">
+                <label>카테고리 프리셋</label>
+                <select id="category" onchange="onCatChange()">
+                    <option value="electronics">전자기기 (초기 집중형, k=1.5)</option>
+                    <option value="eyewear" selected>아이웨어 (이중 파형, k=1.1)</option>
+                    <option value="fashion">패션웨어 (분산형, k=0.85)</option>
+                    <option value="custom">직접 입력</option>
+                </select>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>R&#8734; 최대 반품률 <span class="unit">%</span></label>
+                    <input type="number" id="r_inf" value="28" step="1" min="1" max="95" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label>k 형상 파라미터</label>
+                    <input type="number" id="k_param" value="1.1" step="0.05" min="0.1" max="5" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label>14일 기준 반품률 <span class="unit">%</span></label>
+                <input type="number" id="r14" value="20" step="1" min="1" max="90" oninput="calc()">
+            </div>
+        </div>
+
+        <div class="formula-ref">
+            <strong>수식 참고</strong><br>
+            <code>G = 판매가 - 매출원가</code><br>
+            <code>L = 매출원가 + 배송비 + 인건비 + 포장재 - 잔존가치</code><br>
+            <code>BEP = G / (G + L)</code><br>
+            <code>R(w) = R&#8734; &times; [1 - e^(-(w/&lambda;)^k)]</code><br>
+            <code>&pi;/G = 1 - R(w) / BEP</code>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div id="error" class="error-msg"></div>
+
+        <div class="metrics">
+            <div class="metric-card mc-neutral" id="card-g">
+                <div class="label">G 매출총이익</div>
+                <div class="value" id="val-g">$330</div>
+                <div class="desc">판매가 - 매출원가</div>
+            </div>
+            <div class="metric-card" id="card-l">
+                <div class="label">L 반품 건당 손실</div>
+                <div class="value" id="val-l">$270</div>
+                <div class="desc">COGS + 비용 - 잔존가치</div>
+            </div>
+            <div class="metric-card" id="card-bep">
+                <div class="label">BEP 반품률</div>
+                <div class="value" id="val-bep">55.0%</div>
+                <div class="desc" id="desc-lg">L/G = 0.82</div>
+            </div>
+            <div class="metric-card" id="card-day">
+                <div class="label">BEP 도달일</div>
+                <div class="value" id="val-day">-</div>
+                <div class="desc" id="desc-day">90일 내</div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>반품기간별 누적 반품률</h3>
+            <div class="chart-wrapper"><canvas id="chartReturn"></canvas></div>
+        </div>
+
+        <div class="chart-container">
+            <h3>반품기간별 수익률 (&pi;/G)</h3>
+            <div class="chart-wrapper"><canvas id="chartProfit"></canvas></div>
+        </div>
+
+        <div class="summary-table">
+            <h3>주요 기간별 수치</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>반품기간</th>
+                        <th>누적 반품률</th>
+                        <th>&Delta;r (vs 14일)</th>
+                        <th>&pi;/G 수익률</th>
+                        <th>건당 순이익</th>
+                        <th>상태</th>
+                    </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Presets ──
+const CAT = {
+    electronics: { r_inf: 24, k: 1.5 },
+    eyewear:     { r_inf: 28, k: 1.1 },
+    fashion:     { r_inf: 35, k: 0.85 },
+};
+const MARGIN = {
+    low:  { price: 550, cogs: 429 },
+    mid:  { price: 550, cogs: 330 },
+    high: { price: 550, cogs: 220 },
+};
+
+// ── Charts ──
+let chReturn = null, chProfit = null;
+
+// ── Vertical line plugin ──
+const vLinePlugin = {
+    id: 'vlines',
+    afterDraw(chart) {
+        const { ctx } = chart;
+        const xAxis = chart.scales.x;
+        const yAxis = chart.scales.y;
+        [14, 30].forEach(d => {
+            const x = xAxis.getPixelForValue(d);
+            if (x < xAxis.left || x > xAxis.right) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, yAxis.top);
+            ctx.lineTo(x, yAxis.bottom);
+            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+            ctx.setLineDash([4, 3]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d + '일', x, yAxis.top - 5);
+            ctx.restore();
+        });
+    }
+};
+
+// ── Math ──
+function wR(w, Rinf, k, lam) {
+    return w <= 0 ? 0 : Rinf * (1 - Math.exp(-Math.pow(w / lam, k)));
+}
+
+function calLam(Rinf, k, r14) {
+    if (r14 >= Rinf || r14 <= 0 || Rinf <= 0 || k <= 0) return NaN;
+    return 14 / Math.pow(-Math.log(1 - r14 / Rinf), 1 / k);
+}
+
+function bepDay(Rinf, k, lam, bep) {
+    if (bep >= Rinf) return null;
+    if (bep <= 0) return 0;
+    const w = lam * Math.pow(-Math.log(1 - bep / Rinf), 1 / k);
+    return w <= 90 ? w : null;
+}
+
+// ── Read inputs ──
+function inp() {
+    const v = id => parseFloat(document.getElementById(id).value) || 0;
+    return {
+        price: v('price'), cogs: v('cogs'),
+        ship: v('shipping'), labor: v('labor'),
+        pack: v('packaging'), salv: v('salvage'),
+        Rinf: v('r_inf') / 100, k: v('k_param'), r14: v('r14') / 100,
+    };
+}
+
+// ── Main calculate ──
+function calc() {
+    const i = inp();
+    const err = document.getElementById('error');
+
+    // Validation
+    if (i.price <= 0) return showErr('판매가를 입력하세요.');
+    if (i.price <= i.cogs) return showErr('판매가가 매출원가보다 커야 합니다.');
+    if (i.r14 >= i.Rinf) return showErr('14일 기준 반품률이 R∞보다 작아야 합니다.');
+    if (i.k <= 0) return showErr('k 파라미터는 0보다 커야 합니다.');
+    err.style.display = 'none';
+
+    const G = i.price - i.cogs;
+    const L = i.cogs + i.ship + i.labor + i.pack - i.salv;
+    const BEP = L <= 0 ? 1 : G / (G + L);
+    const lam = calLam(i.Rinf, i.k, i.r14);
+    if (isNaN(lam)) return showErr('파라미터 조합이 유효하지 않습니다.');
+
+    const marginPct = (G / i.price * 100).toFixed(1);
+    const bd = bepDay(i.Rinf, i.k, lam, BEP);
+
+    // ── Update display ──
+    document.getElementById('disp-margin').textContent = marginPct + '%';
+    document.getElementById('val-g').textContent = '$' + G.toFixed(0);
+    document.getElementById('val-l').textContent = '$' + L.toFixed(0);
+    document.getElementById('val-bep').textContent = (BEP * 100).toFixed(1) + '%';
+    document.getElementById('desc-lg').textContent = 'L/G = ' + (L / G).toFixed(2);
+
+    // Card colors
+    setCardClass('card-bep', BEP > 0.45 ? 'mc-positive' : BEP > 0.25 ? 'mc-warn' : 'mc-negative');
+
+    if (bd !== null) {
+        document.getElementById('val-day').textContent = bd.toFixed(0) + '일';
+        document.getElementById('desc-day').textContent =
+            bd <= 14 ? '14일 이내 적자 전환' : bd <= 30 ? '30일 이내 적자 전환' : bd.toFixed(0) + '일 후 적자';
+        setCardClass('card-day', bd <= 30 ? 'mc-negative' : 'mc-warn');
+    } else {
+        document.getElementById('val-day').textContent = '미도달';
+        document.getElementById('desc-day').textContent = '90일 내 BEP 미도달 (안전)';
+        setCardClass('card-day', 'mc-positive');
+    }
+
+    // ── Chart data ──
+    const days = [], rr = [], pr = [], bepArr = [];
+    for (let d = 0; d <= 90; d++) {
+        days.push(d);
+        const r = wR(d, i.Rinf, i.k, lam);
+        rr.push(+(r * 100).toFixed(2));
+        pr.push(+((1 - r / BEP) * 100).toFixed(2));
+        bepArr.push(+(BEP * 100).toFixed(2));
+    }
+
+    drawReturn(days, rr, bepArr);
+    drawProfit(days, pr);
+    drawTable(i.Rinf, i.k, lam, BEP, G);
+}
+
+function showErr(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function setCardClass(id, cls) {
+    const el = document.getElementById(id);
+    el.className = 'metric-card ' + cls;
+}
+
+// ── Return chart ──
+function drawReturn(labels, data, bepData) {
+    if (chReturn) {
+        chReturn.data.labels = labels;
+        chReturn.data.datasets[0].data = data;
+        chReturn.data.datasets[1].data = bepData;
+        chReturn.update('none');
+        return;
+    }
+    chReturn = new Chart(document.getElementById('chartReturn'), {
+        type: 'line',
+        plugins: [vLinePlugin],
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: '누적 반품률',
+                    data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.06)',
+                    fill: true, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+                },
+                {
+                    label: 'BEP 반품률',
+                    data: bepData, borderColor: '#ef4444',
+                    borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false,
+                },
+            ],
+        },
+        options: chartOpts('누적 반품률 (%)', v => v + '%', true),
+    });
+}
+
+// ── Profit chart ──
+function drawProfit(labels, data) {
+    if (chProfit) {
+        chProfit.data.labels = labels;
+        chProfit.data.datasets[0].data = data;
+        chProfit.update('none');
+        return;
+    }
+    chProfit = new Chart(document.getElementById('chartProfit'), {
+        type: 'line',
+        plugins: [vLinePlugin],
+        data: {
+            labels,
+            datasets: [{
+                label: 'π/G 수익률',
+                data, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+                fill: { target: 'origin', above: 'rgba(34,197,94,0.10)', below: 'rgba(239,68,68,0.10)' },
+                segment: {
+                    borderColor: function(ctx) {
+                        const y0 = ctx.p0.parsed.y, y1 = ctx.p1.parsed.y;
+                        if (y0 >= 0 && y1 >= 0) return '#22c55e';
+                        if (y0 < 0 && y1 < 0) return '#ef4444';
+                        return '#94a3b8';
+                    },
+                },
+            }],
+        },
+        options: chartOpts('수익률 π/G (%)', v => (v >= 0 ? '+' : '') + v + '%', false),
+    });
+}
+
+function chartOpts(yTitle, tickCb, showLegend) {
+    return {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: showLegend, position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+            tooltip: {
+                callbacks: {
+                    title: c => c[0].label + '일',
+                    label: c => {
+                        const v = c.parsed.y;
+                        return c.dataset.label + ': ' + (v >= 0 && c.datasetIndex !== 1 ? '+' : '') + v.toFixed(1) + '%';
+                    },
+                },
+            },
+        },
+        scales: {
+            x: { title: { display: true, text: '반품기간 (일)', font: { size: 11 } }, ticks: { stepSize: 10 } },
+            y: { title: { display: true, text: yTitle, font: { size: 11 } }, ticks: { callback: tickCb } },
+        },
+    };
+}
+
+// ── Summary table ──
+function drawTable(Rinf, k, lam, BEP, G) {
+    const periods = [7, 14, 21, 30, 45, 60, 90];
+    const r14val = wR(14, Rinf, k, lam);
+    const tb = document.getElementById('tbody');
+    tb.innerHTML = '';
+
+    periods.forEach(d => {
+        const r = wR(d, Rinf, k, lam);
+        const delta = r - r14val;
+        const piG = (1 - r / BEP) * 100;
+        const piUnit = G * (1 - r / BEP);
+        const cls = piG > 2 ? 'pos' : piG < -2 ? 'neg' : '';
+        const status = piG > 2 ? '흑자' : piG < -2 ? '적자' : 'BEP';
+        const isBep = Math.abs(piG) <= 2;
+
+        const tr = document.createElement('tr');
+        if (isBep) tr.className = 'bep-row';
+        tr.innerHTML = `
+            <td><strong>${d}일</strong></td>
+            <td>${(r * 100).toFixed(1)}%</td>
+            <td>${d === 14 ? '-' : (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + 'pp'}</td>
+            <td class="${cls}">${piG >= 0 ? '+' : ''}${piG.toFixed(1)}%</td>
+            <td class="${cls}">$${piUnit.toFixed(0)}</td>
+            <td>${status}</td>`;
+        tb.appendChild(tr);
+    });
+}
+
+// ── Preset handlers ──
+function applyMargin(type) {
+    const p = MARGIN[type];
+    document.getElementById('price').value = p.price;
+    document.getElementById('cogs').value = p.cogs;
+    document.querySelectorAll('.presets button').forEach(b => b.classList.remove('active'));
+    document.getElementById('pm-' + type).classList.add('active');
+    calc();
+}
+
+function onCatChange() {
+    const v = document.getElementById('category').value;
+    if (v !== 'custom' && CAT[v]) {
+        document.getElementById('r_inf').value = CAT[v].r_inf;
+        document.getElementById('k_param').value = CAT[v].k;
+    }
+    calc();
+}
+
+// Init
+document.addEventListener('DOMContentLoaded', calc);
+</script>
+</body>
+</html>
