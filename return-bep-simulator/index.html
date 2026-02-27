@@ -86,7 +86,9 @@
             background: #fff; border-radius: 10px; padding: 16px;
             border: 1px solid #e2e8f0; margin-bottom: 14px;
         }
-        .chart-container h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #334155; }
+        .chart-container .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+        .chart-container h3 { font-size: 13px; font-weight: 600; color: #334155; margin: 0; }
+        .chart-container .chart-desc { font-size: 11px; color: #94a3b8; }
         .chart-wrapper { position: relative; height: 260px; }
 
         .summary-table {
@@ -110,6 +112,12 @@
             padding: 8px 12px; border-radius: 6px; font-size: 12px;
             margin-bottom: 14px; display: none;
         }
+        .warn-msg {
+            background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c;
+            padding: 10px 14px; border-radius: 6px; font-size: 12px;
+            margin-bottom: 14px; display: none; line-height: 1.6;
+        }
+        .warn-msg strong { color: #9a3412; }
 
         .formula-ref {
             margin-top: 8px; padding: 10px; background: #f8fafc;
@@ -218,6 +226,7 @@
     <!-- MAIN -->
     <div class="main">
         <div id="error" class="error-msg"></div>
+        <div id="warning" class="warn-msg"></div>
 
         <div class="metrics">
             <div class="metric-card mc-neutral" id="card-g">
@@ -248,7 +257,10 @@
         </div>
 
         <div class="chart-container">
-            <h3>반품기간별 수익률 (&pi;/G)</h3>
+            <div class="chart-header">
+                <h3>반품기간별 수익률 (&pi;/G)</h3>
+                <span class="chart-desc">이론상 최대 이익(G) 대비 몇 %를 지켜냈는가</span>
+            </div>
             <div class="chart-wrapper"><canvas id="chartProfit"></canvas></div>
         </div>
 
@@ -286,6 +298,29 @@ const MARGIN = {
 
 // ── Charts ──
 let chReturn = null, chProfit = null;
+
+// ── BEP label plugin (return chart) ──
+const bepLabelPlugin = {
+    id: 'bepLabel',
+    afterDraw(chart) {
+        const ds = chart.data.datasets[1];
+        if (!ds || !ds.data || !ds.data.length) return;
+        const bepVal = ds.data[0];
+        if (bepVal === undefined) return;
+        const yAxis = chart.scales.y;
+        const xAxis = chart.scales.x;
+        const y = yAxis.getPixelForValue(bepVal);
+        if (y < yAxis.top || y > yAxis.bottom) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.fillStyle = '#ef4444';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText('BEP ' + bepVal.toFixed(1) + '%', xAxis.right - 4, y - 4);
+        ctx.restore();
+    }
+};
 
 // ── Vertical line plugin ──
 const vLinePlugin = {
@@ -363,6 +398,15 @@ function calc() {
     const marginPct = (G / i.price * 100).toFixed(1);
     const bd = bepDay(i.Rinf, i.k, lam, BEP);
 
+    // ── Structural deficit warning ──
+    const warn = document.getElementById('warning');
+    if (BEP < i.Rinf && BEP < 0.15) {
+        warn.innerHTML = '<strong>구조적 적자 경고</strong> — BEP(' + (BEP * 100).toFixed(1) + '%)가 예상 최대 반품률(R∞=' + (i.Rinf * 100).toFixed(0) + '%)보다 현저히 낮습니다. 반품 1건의 손실($' + L.toFixed(0) + ')이 판매 ' + (L / G).toFixed(1) + '건의 이익에 해당하여 현실적으로 흑자 달성이 어렵습니다.';
+        warn.style.display = 'block';
+    } else {
+        warn.style.display = 'none';
+    }
+
     // ── Update display ──
     document.getElementById('disp-margin').textContent = marginPct + '%';
     document.getElementById('val-g').textContent = '$' + G.toFixed(0);
@@ -374,9 +418,14 @@ function calc() {
     setCardClass('card-bep', BEP > 0.45 ? 'mc-positive' : BEP > 0.25 ? 'mc-warn' : 'mc-negative');
 
     if (bd !== null) {
-        document.getElementById('val-day').textContent = bd.toFixed(0) + '일';
-        document.getElementById('desc-day').textContent =
-            bd <= 14 ? '14일 이내 적자 전환' : bd <= 30 ? '30일 이내 적자 전환' : bd.toFixed(0) + '일 후 적자';
+        if (bd < 1) {
+            document.getElementById('val-day').textContent = '즉시';
+            document.getElementById('desc-day').textContent = '판매 즉시 적자 구조';
+        } else {
+            document.getElementById('val-day').textContent = bd.toFixed(0) + '일';
+            document.getElementById('desc-day').textContent =
+                bd <= 14 ? '14일 이내 적자 전환' : bd <= 30 ? '30일 이내 적자 전환' : bd.toFixed(0) + '일 후 적자';
+        }
         setCardClass('card-day', bd <= 30 ? 'mc-negative' : 'mc-warn');
     } else {
         document.getElementById('val-day').textContent = '미도달';
@@ -421,7 +470,7 @@ function drawReturn(labels, data, bepData) {
     }
     chReturn = new Chart(document.getElementById('chartReturn'), {
         type: 'line',
-        plugins: [vLinePlugin],
+        plugins: [vLinePlugin, bepLabelPlugin],
         data: {
             labels,
             datasets: [
@@ -433,7 +482,9 @@ function drawReturn(labels, data, bepData) {
                 {
                     label: 'BEP 반품률',
                     data: bepData, borderColor: '#ef4444',
-                    borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0, fill: false,
+                    backgroundColor: 'rgba(239,68,68,0.06)',
+                    borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0,
+                    fill: { target: 'origin' },
                 },
             ],
         },
