@@ -136,6 +136,80 @@
         .computed-group .cg-label { color: #64748b; }
         .computed-group .cg-value { font-weight: 600; color: #3b82f6; font-size: 13px; }
 
+        /* Help button */
+        .title-row { display: flex; align-items: center; gap: 8px; }
+        .help-btn {
+            width: 22px; height: 22px; border-radius: 50%;
+            border: 1.5px solid #94a3b8; background: #fff;
+            color: #64748b; font-size: 12px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .help-btn:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff; border-radius: 14px; width: 680px; max-width: 92vw;
+            max-height: 85vh; overflow-y: auto; padding: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .modal .modal-sub { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+        .modal-close {
+            float: right; background: none; border: none;
+            font-size: 20px; cursor: pointer; color: #94a3b8;
+            padding: 0 4px; line-height: 1;
+        }
+        .modal-close:hover { color: #1e293b; }
+        .modal-section { margin-bottom: 18px; }
+        .modal-section h3 {
+            font-size: 13px; font-weight: 700; color: #334155;
+            margin-bottom: 8px; padding-bottom: 5px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modal-var {
+            margin-bottom: 12px; padding: 10px 12px;
+            background: #f8fafc; border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+        .modal-var.cat-cost { border-left-color: #f59e0b; }
+        .modal-var.cat-weibull { border-left-color: #10b981; }
+        .modal-var.cat-volume { border-left-color: #8b5cf6; }
+        .modal-var h4 { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .modal-var p { font-size: 11.5px; color: #475569; line-height: 1.6; margin-bottom: 3px; }
+        .modal-var .tag {
+            display: inline-block; font-size: 10px; padding: 1px 6px;
+            border-radius: 4px; font-weight: 600; margin-right: 4px;
+        }
+        .tag-meaning { background: #dbeafe; color: #1d4ed8; }
+        .tag-effects { background: #fef3c7; color: #92400e; }
+        .tag-basis { background: #d1fae5; color: #065f46; }
+        .tag-analogy { background: #ede9fe; color: #5b21b6; }
+
+        /* Tooltips */
+        .has-tip { position: relative; cursor: help; border-bottom: 1px dotted #94a3b8; }
+        .tip-box {
+            display: none; position: absolute; left: 0; bottom: calc(100% + 8px);
+            width: 260px; background: #1e293b; color: #f1f5f9;
+            border-radius: 8px; padding: 10px 12px;
+            font-size: 11px; line-height: 1.6; z-index: 500;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        .tip-box::after {
+            content: ''; position: absolute; top: 100%; left: 16px;
+            border: 6px solid transparent; border-top-color: #1e293b;
+        }
+        .has-tip:hover .tip-box { display: block; pointer-events: auto; }
+        .tip-box .tip-title { font-weight: 700; color: #93c5fd; margin-bottom: 4px; font-size: 11.5px; }
+        .tip-box .tip-analogy { color: #c4b5fd; font-style: italic; margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.1); }
+
         @media (max-width: 960px) {
             .container { flex-direction: column; }
             .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
@@ -147,7 +221,10 @@
 <div class="container">
     <!-- SIDEBAR -->
     <div class="sidebar">
-        <h1>반품 BEP 시뮬레이터</h1>
+        <div class="title-row">
+            <h1>반품 BEP 시뮬레이터</h1>
+            <button class="help-btn" onclick="document.getElementById('helpModal').classList.add('open')" title="도움말">?</button>
+        </div>
         <p class="subtitle">변수를 조정하여 BEP 반품률과 수익률을 실시간 시뮬레이션</p>
 
         <div class="section">
@@ -159,11 +236,11 @@
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label>판매가 <span class="unit">$</span></label>
+                    <label><span class="has-tip">판매가<span class="tip-box"><span class="tip-title">판매가 (Price)</span>판매 단위당 수익. G(이익)과 가격 탄력성 모델의 기준점으로 사용됩니다.<br>▸ 영향: 마진, BEP, 탄력성 통한 판매량<br>▸ 기준: Gentle Monster 등 프리미엄 아이웨어 가격대<span class="tip-analogy">🚕 택시 미터기처럼, 요금을 올리면 주머니엔 더 들어오지만 손님이 다른 앱을 켜기 시작한다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="price" value="550" step="10" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>매출원가 <span class="unit">$</span></label>
+                    <label><span class="has-tip">매출원가<span class="tip-box"><span class="tip-title">매출원가 (COGS)</span>제품 한 개당 원가. G(이익)을 줄이면서 동시에 L(반품 손실)을 늘리는 이중 타격 구조입니다.<br>▸ 영향: 마진(G↓), 반품 손실(L↑), BEP<br>▸ 기준: 프리미엄 아이웨어 ~60% 매출총이익률<span class="tip-analogy">🏚️ 댐의 균열처럼, 원가가 오르면 마진에서도 새고 반품 손실에서도 동시에 새어나간다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="cogs" value="220" step="10" oninput="calc()">
                 </div>
             </div>
@@ -177,21 +254,21 @@
             <div class="section-title">반품 비용</div>
             <div class="field-row">
                 <div class="field">
-                    <label>배송비 (왕복) <span class="unit">$</span></label>
+                    <label><span class="has-tip">배송비 (왕복)<span class="tip-box"><span class="tip-title">배송비 (Round-trip Shipping)</span>반품 1건당 왕복 운송비. 소비자 회수 + 창고 입고까지의 물류 비용입니다.<br>▸ 영향: 반품 손실(L) 직접 증가, BEP 하락<br>▸ 기준: UPS/FedEx 편도 $12~18 합산<span class="tip-analogy">🚚 헛걸음 택배처럼, 물건이 돌아오면 배달기사가 두 번 움직인 기름값을 내가 떠안는다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="shipping" value="30" step="5" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>검수/재입고비 <span class="unit">$</span></label>
+                    <label><span class="has-tip">검수/재입고비<span class="tip-box"><span class="tip-title">검수/재입고비 (Inspection & Restocking)</span>반품 제품의 상태 확인, 분류, 재포장, 재고 업데이트 인건비입니다.<br>▸ 영향: 반품 손실(L) 직접 증가, BEP 하락<br>▸ 기준: 3PL 창고 반품 처리 단가 $15~25<span class="tip-analogy">🛂 공항 입국심사처럼, 반품 상품도 재입고 전 '신원 확인'을 거쳐야 하고 그 인건비가 원가에 얹힌다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="labor" value="20" step="5" oninput="calc()">
                 </div>
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label>포장재 손실 <span class="unit">$</span></label>
+                    <label><span class="has-tip">포장재 손실<span class="tip-box"><span class="tip-title">포장재 손실 (Packaging Loss)</span>개봉 시 손상/재사용 불가된 포장재(박스, 씰, 완충재) 원가 손실입니다.<br>▸ 영향: 반품 손실(L) 직접 증가, BEP 하락<br>▸ 기준: 프리미엄 아이웨어 고급 패키징 단가<span class="tip-analogy">🎂 생일 케이크 상자처럼, 한 번 뜯으면 그 설레는 외형으로 돌아올 수 없다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="packaging" value="10" step="5" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>잔존가치 (회수) <span class="unit">$</span></label>
+                    <label><span class="has-tip">잔존가치 (회수)<span class="tip-box"><span class="tip-title">잔존가치 (Salvage Value)</span>반품 제품에서 회수 가능한 금액. 재판매·리퍼브·부품 활용 등으로 L을 줄여줍니다.<br>▸ 영향: 반품 손실(L) 감소, BEP 상승(유리)<br>▸ 기준: 개봉 아이웨어 회수율 한계 반영<span class="tip-analogy">📚 중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.</span></span></span> <span class="unit">$</span></label>
                     <input type="number" id="salvage" value="10" step="5" oninput="calc()">
                 </div>
             </div>
@@ -214,16 +291,16 @@
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label>R&#8734; 최대 반품률 <span class="unit">%</span></label>
+                    <label><span class="has-tip">R&#8734; 최대 반품률<span class="tip-box"><span class="tip-title">R∞ 최대 반품률 (Asymptotic Return Rate)</span>시간이 무한히 흐를 때 도달하는 이론적 최대 반품률. Weibull CDF의 점근선입니다.<br>▸ 영향: 각 시점 반품률, λ 역산, 곡선 형태<br>▸ 기준: 아이웨어 카테고리 28% (패션 30~40%보다 낮음)<span class="tip-analogy">🏊 수조의 만수위선처럼, R∞는 반품이 차오를 수 있는 최대 수위다. 수위가 높을수록 BEP를 넘기기 쉬워진다.</span></span></span> <span class="unit">%</span></label>
                     <input type="number" id="r_inf" value="28" step="1" min="1" max="95" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>k 형상 파라미터</label>
+                    <label><span class="has-tip">k 형상 파라미터<span class="tip-box"><span class="tip-title">k 형상 파라미터 (Weibull Shape)</span>반품이 시간축에서 어떻게 집중되는지 결정. k&gt;1이면 초반 집중, k&lt;1이면 장기 분산.<br>▸ 영향: 반품 시점 분포, 특정 기간 내 누적률<br>▸ 기준: 아이웨어 k=1.1 (전자기기 1.5 ~ 패션 0.85 사이)<span class="tip-analogy">📢 버스 파업 뉴스처럼, k가 크면 당일 민원 폭주 후 잠잠, k가 작으면 며칠에 걸쳐 드문드문 불평.</span></span></span></label>
                     <input type="number" id="k_param" value="1.1" step="0.05" min="0.1" max="5" oninput="calc()">
                 </div>
             </div>
             <div class="field">
-                <label>14일 기준 반품률 <span class="unit">%</span></label>
+                <label><span class="has-tip">14일 기준 반품률<span class="tip-box"><span class="tip-title">r14 기준 반품률 (14-day Observed Rate)</span>구매 후 14일 시점의 실측 누적 반품률. R∞·k와 함께 λ(척도 파라미터)를 역산합니다.<br>▸ 영향: Weibull λ 역산, 반품 곡선 속도<br>▸ 기준: R∞의 ~71%가 14일 내 발생 (아이웨어 초기 피팅 판단)<span class="tip-analogy">🩺 검진 중간 결과지처럼, 14일 차 수치 하나로 전체 반품 곡선의 '속도'를 역추적하는 단서.</span></span></span> <span class="unit">%</span></label>
                 <input type="number" id="r14" value="20" step="1" min="1" max="90" oninput="calc()">
             </div>
         </div>
@@ -232,31 +309,31 @@
             <div class="section-title">판매량 모델 (탄력성)</div>
             <div class="field-row">
                 <div class="field">
-                    <label>기준 판매량 <span class="unit">개/월</span></label>
+                    <label><span class="has-tip">기준 판매량<span class="tip-box"><span class="tip-title">기준 판매량 (Base Volume)</span>참조 조건(판매가 $550, 반품기간 30일)에서의 월 판매량. 탄력성 모델의 기준점입니다.<br>▸ 영향: V_adj 기준점, 규모효과(α·β) 분모<br>▸ 기준: 단일 SKU 프리미엄 e-커머스 월 판매량<span class="tip-analogy">⚖️ 체중계의 '표준 체중'처럼, 모든 변화를 이 기준 대비로 환산한다. 기준이 낮으면 규모효과가 크게 작동.</span></span></span> <span class="unit">개/월</span></label>
                     <input type="number" id="baseVol" value="1000" step="100" min="0" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>반품허용기간 <span class="unit">일</span></label>
+                    <label><span class="has-tip">반품허용기간<span class="tip-box"><span class="tip-title">반품허용기간 (Return Window)</span>소비자가 반품 가능한 정책 기간. (Window/30)^εw로 판매량에 영향을 줍니다.<br>▸ 영향: 탄력성 통한 판매량, 기간 내 반품 비율<br>▸ 기준: 30일 — e-커머스 업계 표준 정책<span class="tip-analogy">🏊 수영장 무료 체험처럼, 이용 기간이 짧으면 망설이다 등록을 안 한다. 고객의 '안전망' 크기가 구매 용기와 직결.</span></span></span> <span class="unit">일</span></label>
                     <input type="number" id="retWindow" value="30" step="1" min="1" max="365" oninput="calc()">
                 </div>
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label>가격 탄력성 (εp)</label>
+                    <label><span class="has-tip">가격 탄력성 (εp)<span class="tip-box"><span class="tip-title">εp 가격 탄력성 (Price Elasticity)</span>가격 변화 대비 수요 변화 민감도. 음수 = 가격↑ 수요↓. |εp|&gt;1이면 탄력적 수요.<br>▸ 영향: 가격 변경 시 V_adj 변동, 총이익 연쇄<br>▸ 기준: 프리미엄 패션 액세서리 -1.2 (Kalla 2017)<span class="tip-analogy">🪢 고무줄에 묶인 돌멩이처럼, 가격을 올리면 수요가 더 크게 반대로 튕겨나간다. |1.2|이므로 당긴 거리보다 더 멀리.</span></span></span></label>
                     <input type="number" id="priceElast" value="-1.2" step="0.1" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>반품기간 탄력성 (εw)</label>
+                    <label><span class="has-tip">반품기간 탄력성 (εw)<span class="tip-box"><span class="tip-title">εw 반품기간 탄력성 (Window Elasticity)</span>반품기간 변화 대비 판매량 변화 민감도. 양수 = 기간↑ 판매↑ (소비자 신뢰 효과).<br>▸ 영향: 반품기간 변경 시 V_adj 변동<br>▸ 기준: 0.20 — Ertekin &amp; Agrawal (2021, Management Science)<span class="tip-analogy">♨️ 온천 온도처럼, 조금 더 따뜻하면 손님이 살짝 더 오지만 주된 이유는 아니다. 실재하지만 온화한 영향.</span></span></span></label>
                     <input type="number" id="retElast" value="0.20" step="0.05" oninput="calc()">
                 </div>
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label>비용 규모효과 (α)</label>
+                    <label><span class="has-tip">비용 규모효과 (α)<span class="tip-box"><span class="tip-title">α 비용 규모효과 (Cost Scale Effect)</span>판매량 변화 대비 단위 원가 변화. 음수 = 물량↑ 단가↓ (규모의 경제).<br>▸ 영향: V_adj 변동 시 조정 단위 원가 변동<br>▸ 기준: -0.25 — BCG 경험곡선 + 3PL 물량 할인<span class="tip-analogy">🏭 대량 구매 할인처럼, 물량이 늘면 원재료뿐 아니라 배송·포장·인건비까지 한꺼번에 단가가 깎인다.</span></span></span></label>
                     <input type="number" id="costScale" value="-0.25" step="0.05" oninput="calc()">
                 </div>
                 <div class="field">
-                    <label>잔존가치 규모효과 (β)</label>
+                    <label><span class="has-tip">잔존가치 규모효과 (β)<span class="tip-box"><span class="tip-title">β 잔존가치 규모효과 (Salvage Scale Effect)</span>판매량 변화 대비 잔존가치 회수율 변화. 양수 = 물량↑ 회수율↑.<br>▸ 영향: V_adj 변동 시 조정 잔존가치 변동<br>▸ 기준: 0.15 — B-Stock/Optoro 리커머스 데이터<span class="tip-analogy">🚗 중고차 딜러 경매처럼, 매물이 많으면 경매장이 활성화되어 입찰 경쟁이 붙고 대당 낙찰가가 올라간다.</span></span></span></label>
                     <input type="number" id="salvScale" value="0.15" step="0.05" oninput="calc()">
                 </div>
             </div>
@@ -345,6 +422,136 @@
                 </thead>
                 <tbody id="tbody"></tbody>
             </table>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal">
+    <div class="modal">
+        <button class="modal-close" onclick="document.getElementById('helpModal').classList.remove('open')">&times;</button>
+        <h2>변수 도움말</h2>
+        <p class="modal-sub">각 변수의 의미, 영향, 설정 근거, 비유를 확인하세요. 라벨에 마우스를 올리면 간단한 툴팁도 볼 수 있습니다.</p>
+
+        <div class="modal-section">
+            <h3>마진 설정</h3>
+            <div class="modal-var">
+                <h4>판매가 (Price)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매 단위당 수익. G(이익)과 가격 탄력성 모델의 기준점으로 사용됩니다.</p>
+                <p><span class="tag tag-effects">영향</span> 단위 이익(G) 직접 변동 / BEP 변동 / 가격 탄력성 통해 판매량 변동 / 규모효과 연쇄 변동</p>
+                <p><span class="tag tag-basis">근거</span> Gentle Monster 등 프리미엄 아이웨어 가격대. $550은 탄력성 공식의 기준가로도 사용.</p>
+                <p><span class="tag tag-analogy">비유</span> 택시 미터기처럼, 요금을 올리면 주머니엔 더 들어오지만 손님이 다른 앱을 켜기 시작한다.</p>
+            </div>
+            <div class="modal-var">
+                <h4>매출원가 (COGS)</h4>
+                <p><span class="tag tag-meaning">의미</span> 제품 한 개당 원가. G(이익)을 줄이면서 동시에 L(반품 손실)을 늘리는 이중 타격 구조입니다.</p>
+                <p><span class="tag tag-effects">영향</span> 단위 이익(G↓) / 반품 손실(L↑) / BEP 변동 — 하나의 변수가 양쪽에 동시 작용</p>
+                <p><span class="tag tag-basis">근거</span> $220은 판매가 $550 대비 ~60% 매출총이익률. 프리미엄 아이웨어 업계 평균 마진 구조에 부합.</p>
+                <p><span class="tag tag-analogy">비유</span> 댐의 균열처럼, 원가가 오르면 마진에서도 새고 반품 손실에서도 동시에 새어나간다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>반품 비용</h3>
+            <div class="modal-var cat-cost">
+                <h4>배송비 — 왕복 (Round-trip Shipping)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 1건당 왕복 운송비. 소비자에게 반품 레이블을 제공하고 창고까지 회수하는 비용.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락 (더 낮은 반품률에서 적자 전환)</p>
+                <p><span class="tag tag-basis">근거</span> 미국/캐나다 UPS/FedEx 반품 레이블 편도 $12~18 합산. 국제 프리미엄 패키지 왕복 운임 기준.</p>
+                <p><span class="tag tag-analogy">비유</span> 헛걸음 택배처럼, 물건이 돌아오는 순간 배달기사가 두 번 움직인 기름값을 내가 떠안는다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>검수/재입고비 (Inspection & Restocking)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품의 상태 확인, 분류, 재포장, 재고 시스템 업데이트 인건비.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락</p>
+                <p><span class="tag tag-basis">근거</span> 3PL 창고 반품 처리 단가 $15~25. 아이웨어는 렌즈 정밀 검수가 필요하여 $20 설정.</p>
+                <p><span class="tag tag-analogy">비유</span> 공항 입국심사처럼, 반품 상품도 재입고 전 '신원 확인'을 거쳐야 하고 그 시급이 원가에 얹힌다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>포장재 손실 (Packaging Loss)</h4>
+                <p><span class="tag tag-meaning">의미</span> 개봉 시 손상/재사용 불가된 포장재(박스, 봉인 씰, 완충재) 원가 손실.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락</p>
+                <p><span class="tag tag-basis">근거</span> 프리미엄 아이웨어 고급 패키징(자석 클로저 박스, 로고 각인 케이스) 단가 $10.</p>
+                <p><span class="tag tag-analogy">비유</span> 생일 케이크 상자처럼, 한 번 뜯고 나면 다시 그 설레는 외형으로 돌아올 수 없다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>잔존가치 (Salvage Value)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품에서 회수 가능한 금액. 재판매·리퍼브·부품 활용으로 L을 줄여줍니다.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 감소 / BEP 상승(유리) / β 규모효과와 결합하여 판매량 따라 변동</p>
+                <p><span class="tag tag-basis">근거</span> 개봉 아이웨어는 위생·규제상 완전 회수가 어려움. B-Stock 중고 재판매 한계를 반영한 보수적 $10.</p>
+                <p><span class="tag tag-analogy">비유</span> 중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>반품 모델 (Weibull)</h3>
+            <div class="modal-var cat-weibull">
+                <h4>R∞ 최대 반품률 (Asymptotic Return Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 시간이 무한히 흐를 때 이론적 최대 반품률. Weibull CDF의 점근선(Asymptote).</p>
+                <p><span class="tag tag-effects">영향</span> 각 시점 반품률 변동 / λ 역산 / 곡선 전체 형태 변경</p>
+                <p><span class="tag tag-basis">근거</span> 아이웨어 28%. 일반 패션(30~40%)보다 낮고 전자기기(10~15%)보다 높은 수준.</p>
+                <p><span class="tag tag-analogy">비유</span> 수조의 만수위선처럼, R∞는 반품이 차오를 수 있는 최대 수위다. 수위가 높을수록 BEP를 넘기기 쉬워진다.</p>
+            </div>
+            <div class="modal-var cat-weibull">
+                <h4>k 형상 파라미터 (Weibull Shape)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품의 시간 집중도. k&gt;1이면 초반 집중(결함 중심), k&lt;1이면 장기 분산(패션/핏 중심).</p>
+                <p><span class="tag tag-effects">영향</span> 반품 시점 분포 형태 / 특정 기간 내 누적률 변동 / λ 역산값 변동</p>
+                <p><span class="tag tag-basis">근거</span> 아이웨어 k=1.1. 전자기기(1.5, 초기 결함 집중)와 패션(0.85, 장기 분산) 사이.</p>
+                <p><span class="tag tag-analogy">비유</span> 버스 파업 뉴스처럼, k가 크면 당일 민원 폭주 후 잠잠, k가 작으면 며칠에 걸쳐 드문드문 불평.</p>
+            </div>
+            <div class="modal-var cat-weibull">
+                <h4>r14 기준 반품률 (14-day Observed Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 구매 후 14일 시점의 실측 누적 반품률. R∞·k와 함께 λ를 역산하는 핵심 관측값.</p>
+                <p><span class="tag tag-effects">영향</span> Weibull λ 역산 / 반품 곡선 속도 / 각 기간 내 예상 반품 비율</p>
+                <p><span class="tag tag-basis">근거</span> 20% = R∞(28%)의 ~71%가 14일 내 발생. 아이웨어 소비자 초기 2주 피팅 판단 경향 반영.</p>
+                <p><span class="tag tag-analogy">비유</span> 검진 중간 결과지처럼, 14일 차 수치 하나로 전체 반품 곡선의 '속도'를 역추적하는 단서.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>판매량 모델 (탄력성)</h3>
+            <div class="modal-var cat-volume">
+                <h4>기준 판매량 (Base Volume)</h4>
+                <p><span class="tag tag-meaning">의미</span> 참조 조건(판매가 $550, 반품기간 30일)에서의 월 판매량. 탄력성 모델의 기준점.</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 기준점 / 규모효과(α·β) 분모 / 총 이익·총 반품 손실 절대값 변동</p>
+                <p><span class="tag tag-basis">근거</span> 단일 아이웨어 SKU 프리미엄 e-커머스 월 판매량 1,000개. 비율 계산의 정규화 기준점.</p>
+                <p><span class="tag tag-analogy">비유</span> 체중계의 '표준 체중'처럼, 모든 변화를 이 기준 대비로 환산한다. 기준을 낮게 잡으면 규모효과가 크게 작동.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>반품허용기간 (Return Window)</h4>
+                <p><span class="tag tag-meaning">의미</span> 소비자가 반품 가능한 정책 기간. (Window/30)^εw로 판매량에 영향.</p>
+                <p><span class="tag tag-effects">영향</span> 탄력성(εw) 통한 V_adj 변동 / Weibull 기간 내 반품 비율 / 총 반품 건수 변동</p>
+                <p><span class="tag tag-basis">근거</span> 30일 = e-커머스 업계 가장 보편적 반품 정책. Amazon, Shopify 기반 브랜드 표준.</p>
+                <p><span class="tag tag-analogy">비유</span> 수영장 무료 체험처럼, 이용 기간이 짧으면 망설이다 등록을 안 한다. 고객의 '안전망' 크기가 구매 용기와 직결.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>εp 가격 탄력성 (Price Elasticity)</h4>
+                <p><span class="tag tag-meaning">의미</span> 가격 변화 대비 수요 변화 민감도. 음수 = 가격↑ 수요↓. |εp|&gt;1이면 탄력적.</p>
+                <p><span class="tag tag-effects">영향</span> 가격 변경 시 V_adj 변동 / 총이익·반품비용 연쇄 변동 / 규모효과 연쇄</p>
+                <p><span class="tag tag-basis">근거</span> -1.2 = Kalla(2017) 패션 탄력성 연구, McKinsey 프리미엄 분석 종합. 명품보다 탄력적, 생필품보다 비탄력적.</p>
+                <p><span class="tag tag-analogy">비유</span> 고무줄에 묶인 돌멩이처럼, 가격을 올리면 수요가 더 크게 반대로 튕겨나간다.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>εw 반품기간 탄력성 (Window Elasticity)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품기간 변화 대비 판매량 민감도. 양수 = 기간↑ 판매↑ (소비자 신뢰 효과).</p>
+                <p><span class="tag tag-effects">영향</span> 반품기간 변경 시 V_adj 변동 / 총이익·반품비용 연쇄</p>
+                <p><span class="tag tag-basis">근거</span> 0.20 = Ertekin & Agrawal(2021, Management Science) 주얼리 소매업체 실험에서 역산.</p>
+                <p><span class="tag tag-analogy">비유</span> 온천 온도처럼, 조금 더 따뜻하면 손님이 살짝 더 오지만 주된 이유는 아니다. 온화한 영향.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>α 비용 규모효과 (Cost Scale Effect)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매량 변화 대비 단위 원가 변화. 음수 = 물량↑ 단가↓ (규모의 경제).</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 변동 시 조정 단위 원가 변동 / 총이익 개선 / BEP 변동</p>
+                <p><span class="tag tag-basis">근거</span> -0.25 = BCG 경험곡선(80~85% 학습률) + 3PL 물량 할인 데이터 혼합.</p>
+                <p><span class="tag tag-analogy">비유</span> 대량 구매 할인처럼, 물량이 늘면 원재료뿐 아니라 배송·포장·인건비까지 한꺼번에 단가가 깎인다.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>β 잔존가치 규모효과 (Salvage Scale Effect)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매량 변화 대비 잔존가치 회수율 변화. 양수 = 물량↑ 회수율↑.</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 변동 시 조정 잔존가치 변동 / 반품 손실(L) 차감액 변동 / BEP 변동</p>
+                <p><span class="tag tag-basis">근거</span> 0.15 = B-Stock Solutions, Optoro 리커머스 데이터 종합. 벌크 재판매 협상력 + 전용 리퍼브 채널 효과.</p>
+                <p><span class="tag tag-analogy">비유</span> 중고차 딜러 경매처럼, 매물이 많으면 경매장이 활성화되어 입찰 경쟁이 붙고 대당 낙찰가가 올라간다.</p>
+            </div>
         </div>
     </div>
 </div>
@@ -771,6 +978,11 @@ function onCatChange() {
     }
     calc();
 }
+
+// ── Modal close ──
+document.getElementById('helpModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+});
 
 // Init
 document.addEventListener('DOMContentLoaded', calc);
