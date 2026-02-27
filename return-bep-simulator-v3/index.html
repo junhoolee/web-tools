@@ -352,8 +352,16 @@
                 </div>
             </div>
             <div class="field">
+                <label><span class="has-tip">원가 회수율<span class="tip-box"><span class="tip-title">원가 회수율 (Cost Recovery Rate)</span>반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율. 0%=전량 손실(현행), 100%=완전 회수.<br>▸ 영향: 반품 손실(L) 감소, BEP 상승(유리)<br>▸ 기준: 잔존가치(부품/벌크 매각)와 별개 — 제품 재정비 후 재판매 경로<span class="tip-analogy">자동차 사고 수리처럼, 폐차(잔존가치)와 수리 후 재판매(회수율)는 다른 경로다.</span></span></span> <span class="unit">%</span></label>
+                <input type="number" id="recoveryRate" value="0" step="5" min="0" max="100" oninput="calc()">
+            </div>
+            <div class="field">
                 <label>순 반품비용 <span class="unit">/건</span></label>
                 <div class="computed" id="disp-retcost">$50</div>
+            </div>
+            <div class="field">
+                <label>유효 매출원가 <span class="unit">(회수 후)</span></label>
+                <div class="computed" id="disp-effcogs">$220</div>
             </div>
         </div>
 
@@ -427,7 +435,7 @@
         <div class="formula-ref">
             <strong>수식 참고</strong><br>
             <code>G = 판매가 - 매출원가</code><br>
-            <code>L = 매출원가 + 배송비 + 검수/재입고비 + 포장재 - 잔존가치</code><br>
+            <code>L = 매출원가 &times; (1 - 원가회수율) + 배송비 + 검수/재입고비 + 포장재 - 잔존가치</code><br>
             <code>BEP = G / (G + L)</code><br>
             <code>R(w) = R&#8734; &times; [1 - e^(-(w/&lambda;)^k)]</code><br>
             <code>&pi;/G = 1 - R(w) / BEP</code><br>
@@ -519,16 +527,7 @@
         <div class="summary-table">
             <h3>주요 기간별 수치</h3>
             <table>
-                <thead>
-                    <tr>
-                        <th>반품기간</th>
-                        <th>누적 반품률</th>
-                        <th>&Delta;r (vs 14일)</th>
-                        <th>&pi;/G 수익률</th>
-                        <th>건당 순이익</th>
-                        <th>상태</th>
-                    </tr>
-                </thead>
+                <thead id="thead"></thead>
                 <tbody id="tbody"></tbody>
             </table>
         </div>
@@ -589,6 +588,13 @@
                 <p><span class="tag tag-effects">영향</span> 반품 손실(L) 감소 / BEP 상승(유리) / &#946; 규모효과와 결합하여 판매량 따라 변동</p>
                 <p><span class="tag tag-basis">근거</span> 개봉 아이웨어는 위생·규제상 완전 회수가 어려움. B-Stock 중고 재판매 한계를 반영한 보수적 $10.</p>
                 <p><span class="tag tag-analogy">비유</span> 중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>원가 회수율 (Cost Recovery Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율. 잔존가치와 별개 경로.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 감소 / BEP 상승(유리) / 0%=전량 손실(현행), 50%=원가 절반 회수</p>
+                <p><span class="tag tag-basis">근거</span> 잔존가치는 부품/벌크 매각, 회수율은 제품 재정비 후 재판매. 아이웨어는 렌즈 교체 후 리퍼브 가능.</p>
+                <p><span class="tag tag-analogy">비유</span> 자동차 사고 수리처럼, 폐차(잔존가치)와 수리 후 재판매(회수율)는 다른 경로다.</p>
             </div>
         </div>
 
@@ -718,6 +724,7 @@ function toggleCompare() {
     // Force chart rebuild for dataset changes
     if (chReturn) { chReturn.destroy(); chReturn = null; }
     if (chProfit) { chProfit.destroy(); chProfit = null; }
+    if (chVolume) { chVolume.destroy(); chVolume = null; }
     calc();
 }
 
@@ -831,6 +838,7 @@ function inp() {
         baseVol: v('baseVol'), retWindow: v('retWindow'),
         priceElast: v('priceElast'), retElast: v('retElast'),
         costScale: v('costScale'), salvScale: v('salvScale'),
+        recoveryRate: v('recoveryRate') / 100,
     };
 }
 
@@ -853,7 +861,7 @@ function calc() {
 
     const G = i.price - i.cogs;
     const vol = calcVolume(i);
-    const L = i.cogs + vol.adjShip + vol.adjLabor + vol.adjPack - vol.adjSalv;
+    const L = i.cogs * (1 - i.recoveryRate) + vol.adjShip + vol.adjLabor + vol.adjPack - vol.adjSalv;
     const BEP = L <= 0 ? 1 : G / (G + L);
     const lam = calLam(i.Rinf, i.k, i.r14);
     if (isNaN(lam)) return showErr('파라미터 조합이 유효하지 않습니다.');
@@ -912,7 +920,7 @@ function calc() {
         const ib = inpB();
         if (ib.price > 0 && ib.price > ib.cogs) {
             const Gb = ib.price - ib.cogs;
-            const Lb = ib.cogs + vol.adjShip + vol.adjLabor + vol.adjPack - vol.adjSalv;
+            const Lb = ib.cogs * (1 - i.recoveryRate) + vol.adjShip + vol.adjLabor + vol.adjPack - vol.adjSalv;
             const BEPb = Lb <= 0 ? 1 : Gb / (Gb + Lb);
             const bdb = bepDay(i.Rinf, i.k, lam, BEPb);
             const marginBPct = (Gb / ib.price * 100).toFixed(1);
@@ -944,10 +952,11 @@ function calc() {
 
     drawReturn(days, rr, bepArr, scenB);
     drawProfit(days, pr, scenB);
-    drawTable(i.Rinf, i.k, lam, BEP, G);
+    drawTable(i.Rinf, i.k, lam, BEP, G, scenB);
 
     // ── Volume model display ──
     document.getElementById('disp-retcost').textContent = '$' + (i.ship + i.labor + i.pack - i.salv).toFixed(0);
+    document.getElementById('disp-effcogs').textContent = '$' + (i.cogs * (1 - i.recoveryRate)).toFixed(0);
 
     const baseVol = i.baseVol > 0 ? i.baseVol : 1000;
     const volPct = ((vol.adjVol - baseVol) / baseVol * 100);
@@ -958,7 +967,7 @@ function calc() {
     document.getElementById('cg-vol').textContent = volText;
     document.getElementById('cg-cost').textContent = '$' + (vol.adjShip + vol.adjLabor + vol.adjPack).toFixed(2);
     document.getElementById('cg-salv').textContent = '$' + vol.adjSalv.toFixed(2);
-    drawVolume(i, vol);
+    drawVolume(i, vol, isCompareMode() ? inpB() : null);
 }
 
 function buildCompareTable(i, G, L, BEP, bd, lam, Gb, Lb, BEPb, bdb) {
@@ -1147,22 +1156,50 @@ const volumeMarkerPlugin = {
 };
 
 // ── Volume chart ──
-function drawVolume(inp, vol) {
+function drawVolume(inp, vol, scenBInput) {
     const windowDays = [];
     const adjVolData = [];
     const baseVolData = [];
     const baseVol = inp.baseVol > 0 ? inp.baseVol : 1000;
+    const adjVolDataB = [];
     for (let d = 7; d <= 90; d++) {
         windowDays.push(d);
         const wRatio = Math.pow(d / REF_WINDOW, inp.retElast);
         const pRatio = inp.price > 0 ? Math.pow(inp.price / REF_PRICE, inp.priceElast) : 1;
         adjVolData.push(+(baseVol * pRatio * wRatio).toFixed(0));
         baseVolData.push(baseVol);
+        if (scenBInput && scenBInput.price > 0) {
+            const pRatioB = Math.pow(scenBInput.price / REF_PRICE, inp.priceElast);
+            adjVolDataB.push(+(baseVol * pRatioB * wRatio).toFixed(0));
+        }
+    }
+    const datasets = [
+        {
+            label: '예상 판매량 (A)',
+            data: adjVolData,
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139,92,246,0.08)',
+            fill: true, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+        },
+        {
+            label: '기준 판매량',
+            data: baseVolData,
+            borderColor: '#94a3b8',
+            borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0,
+        },
+    ];
+    if (scenBInput && adjVolDataB.length) {
+        datasets.push({
+            label: '예상 판매량 (B)',
+            data: adjVolDataB,
+            borderColor: '#ea580c',
+            borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.3,
+            fill: false,
+        });
     }
     if (chVolume) {
         chVolume.data.labels = windowDays;
-        chVolume.data.datasets[0].data = adjVolData;
-        chVolume.data.datasets[1].data = baseVolData;
+        chVolume.data.datasets = datasets;
         chVolume._volumeMarkerDay = inp.retWindow;
         chVolume.update('none');
         return;
@@ -1170,24 +1207,7 @@ function drawVolume(inp, vol) {
     chVolume = new Chart(document.getElementById('chartVolume'), {
         type: 'line',
         plugins: [volumeMarkerPlugin],
-        data: {
-            labels: windowDays,
-            datasets: [
-                {
-                    label: '예상 판매량',
-                    data: adjVolData,
-                    borderColor: '#8b5cf6',
-                    backgroundColor: 'rgba(139,92,246,0.08)',
-                    fill: true, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
-                },
-                {
-                    label: '기준 판매량',
-                    data: baseVolData,
-                    borderColor: '#94a3b8',
-                    borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0,
-                },
-            ],
-        },
+        data: { labels: windowDays, datasets },
         options: chartOpts('판매량 (개/월)', v => v.toLocaleString(), true, '반품허용기간 (일)', c => {
             return c.dataset.label + ': ' + Math.round(c.parsed.y).toLocaleString() + ' 개/월';
         }),
@@ -1219,32 +1239,73 @@ function chartOpts(yTitle, tickCb, showLegend, xTitle, tooltipLabelCb) {
 }
 
 // ── Summary table ──
-function drawTable(Rinf, k, lam, BEP, G) {
+function drawTable(Rinf, k, lam, BEP, G, scenB) {
     const periods = [7, 14, 21, 30, 45, 60, 90];
     const r14val = wR(14, Rinf, k, lam);
     const tb = document.getElementById('tbody');
+    const th = document.getElementById('thead');
     tb.innerHTML = '';
 
-    periods.forEach(d => {
-        const r = wR(d, Rinf, k, lam);
-        const delta = r - r14val;
-        const piG = (1 - r / BEP) * 100;
-        const piUnit = G * (1 - r / BEP);
-        const cls = piG > 2 ? 'pos' : piG < -2 ? 'neg' : '';
-        const status = piG > 2 ? '흑자' : piG < -2 ? '적자' : 'BEP';
-        const isBep = Math.abs(piG) <= 2;
-
-        const tr = document.createElement('tr');
-        if (isBep) tr.className = 'bep-row';
-        tr.innerHTML = `
-            <td><strong>${d}일</strong></td>
-            <td>${(r * 100).toFixed(1)}%</td>
-            <td>${d === 14 ? '-' : (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + 'pp'}</td>
-            <td class="${cls}">${piG >= 0 ? '+' : ''}${piG.toFixed(1)}%</td>
-            <td class="${cls}">$${piUnit.toFixed(0)}</td>
-            <td>${status}</td>`;
-        tb.appendChild(tr);
-    });
+    if (isCompareMode() && scenB) {
+        th.innerHTML = `
+            <tr>
+                <th rowspan="2" style="vertical-align:bottom">반품기간</th>
+                <th rowspan="2" style="vertical-align:bottom">반품률</th>
+                <th colspan="2" style="text-align:center;background:#eff6ff;color:#3b82f6;border-bottom:1px solid #bfdbfe">시나리오 A</th>
+                <th colspan="2" style="text-align:center;background:#fff7ed;color:#ea580c;border-bottom:1px solid #fed7aa">시나리오 B</th>
+            </tr>
+            <tr>
+                <th style="background:#eff6ff">&pi;/G</th>
+                <th style="background:#eff6ff">건당이익</th>
+                <th style="background:#fff7ed">&pi;/G</th>
+                <th style="background:#fff7ed">건당이익</th>
+            </tr>`;
+        periods.forEach(d => {
+            const r = wR(d, Rinf, k, lam);
+            const piGA = (1 - r / BEP) * 100;
+            const piUnitA = G * (1 - r / BEP);
+            const piGB = (1 - r / scenB.BEPb) * 100;
+            const piUnitB = scenB.Gb * (1 - r / scenB.BEPb);
+            const clsA = piGA > 2 ? 'pos' : piGA < -2 ? 'neg' : '';
+            const clsB = piGB > 2 ? 'pos' : piGB < -2 ? 'neg' : '';
+            const isBep = Math.abs(piGA) <= 2 || Math.abs(piGB) <= 2;
+            const tr = document.createElement('tr');
+            if (isBep) tr.className = 'bep-row';
+            tr.innerHTML = `
+                <td><strong>${d}일</strong></td>
+                <td>${(r * 100).toFixed(1)}%</td>
+                <td class="${clsA}">${piGA >= 0 ? '+' : ''}${piGA.toFixed(1)}%</td>
+                <td class="${clsA}">$${piUnitA.toFixed(0)}</td>
+                <td class="${clsB}">${piGB >= 0 ? '+' : ''}${piGB.toFixed(1)}%</td>
+                <td class="${clsB}">$${piUnitB.toFixed(0)}</td>`;
+            tb.appendChild(tr);
+        });
+    } else {
+        th.innerHTML = `<tr>
+            <th>반품기간</th><th>누적 반품률</th>
+            <th>&Delta;r (vs 14일)</th><th>&pi;/G 수익률</th>
+            <th>건당 순이익</th><th>상태</th>
+        </tr>`;
+        periods.forEach(d => {
+            const r = wR(d, Rinf, k, lam);
+            const delta = r - r14val;
+            const piG = (1 - r / BEP) * 100;
+            const piUnit = G * (1 - r / BEP);
+            const cls = piG > 2 ? 'pos' : piG < -2 ? 'neg' : '';
+            const status = piG > 2 ? '흑자' : piG < -2 ? '적자' : 'BEP';
+            const isBep = Math.abs(piG) <= 2;
+            const tr = document.createElement('tr');
+            if (isBep) tr.className = 'bep-row';
+            tr.innerHTML = `
+                <td><strong>${d}일</strong></td>
+                <td>${(r * 100).toFixed(1)}%</td>
+                <td>${d === 14 ? '-' : (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + 'pp'}</td>
+                <td class="${cls}">${piG >= 0 ? '+' : ''}${piG.toFixed(1)}%</td>
+                <td class="${cls}">$${piUnit.toFixed(0)}</td>
+                <td>${status}</td>`;
+            tb.appendChild(tr);
+        });
+    }
 }
 
 // ── Preset handlers ──
