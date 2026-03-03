@@ -1,0 +1,1623 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>반품 BEP & 수익률 시뮬레이터 v4</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.5;
+        }
+        .container { display: flex; min-height: 100vh; }
+
+        /* Sidebar */
+        .sidebar {
+            width: 320px;
+            background: #fff;
+            border-right: 1px solid #e2e8f0;
+            padding: 20px;
+            overflow-y: auto;
+            flex-shrink: 0;
+        }
+        .sidebar h1 { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
+        .sidebar .subtitle { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+
+        .section {
+            margin-bottom: 12px;
+            background: #f8fafc;
+            border: 1px solid #eef1f6;
+            border-radius: 10px;
+            padding: 14px 14px 10px;
+        }
+        .section-title {
+            font-size: 13px; font-weight: 700; color: #1e293b;
+            letter-spacing: 0.2px;
+            margin-bottom: 12px; padding-bottom: 7px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .field { margin-bottom: 8px; }
+        .field label {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 12px; color: #475569; margin-bottom: 3px;
+        }
+        .field label .unit { font-size: 11px; color: #94a3b8; }
+        .field input[type="number"], .field select {
+            width: 100%; padding: 7px 10px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
+            font-size: 13px; outline: none; background: #fff;
+            transition: border-color 0.15s;
+        }
+        .field input:focus, .field select:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 2px rgba(59,130,246,0.1);
+        }
+        .field .computed { font-size: 14px; font-weight: 600; color: #3b82f6; padding: 4px 0; }
+
+        .presets { display: flex; gap: 5px; margin-bottom: 12px; }
+        .presets button {
+            flex: 1; padding: 5px 6px;
+            border: 1px solid #e2e8f0; border-radius: 6px;
+            background: #fff; font-size: 11px; cursor: pointer;
+            transition: all 0.15s;
+        }
+        .presets button:hover { background: #f1f5f9; }
+        .presets button.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+        .field-row { display: flex; gap: 8px; }
+        .field-row .field { flex: 1; }
+
+        /* Main */
+        .main { flex: 1; padding: 20px; overflow-y: auto; }
+
+        .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .metric-card {
+            background: #fff; border-radius: 10px; padding: 14px;
+            border: 1px solid #e2e8f0;
+        }
+        .metric-card .label { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+        .metric-card .value { font-size: 22px; font-weight: 700; }
+        .metric-card .desc { font-size: 11px; color: #94a3b8; margin-top: 1px; }
+        .metric-card .compare-val { font-size: 11px; color: #ea580c; margin-top: 4px; font-weight: 600; display: none; }
+        .mc-positive .value { color: #16a34a; }
+        .mc-negative .value { color: #dc2626; }
+        .mc-neutral .value { color: #3b82f6; }
+        .mc-warn .value { color: #d97706; }
+
+        .chart-container {
+            background: #fff; border-radius: 10px; padding: 16px;
+            border: 1px solid #e2e8f0; margin-bottom: 14px;
+        }
+        .chart-container .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+        .chart-container h3 { font-size: 13px; font-weight: 600; color: #334155; margin: 0; }
+        .chart-container .chart-desc { font-size: 11px; color: #94a3b8; }
+        .chart-wrapper { position: relative; height: 260px; }
+
+        .summary-table {
+            background: #fff; border-radius: 10px; padding: 16px;
+            border: 1px solid #e2e8f0; margin-bottom: 14px;
+        }
+        .summary-table h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #334155; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th {
+            text-align: left; padding: 7px 10px;
+            border-bottom: 2px solid #e2e8f0;
+            color: #64748b; font-weight: 600; font-size: 11px;
+        }
+        td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+        tr.bep-row { background: #fef3c7; }
+        .pos { color: #16a34a; font-weight: 600; }
+        .neg { color: #dc2626; font-weight: 600; }
+
+        .error-msg {
+            background: #fef2f2; border: 1px solid #fecaca; color: #dc2626;
+            padding: 8px 12px; border-radius: 6px; font-size: 12px;
+            margin-bottom: 14px; display: none;
+        }
+        .warn-msg {
+            background: #fff7ed; border: 1px solid #fed7aa; color: #c2410c;
+            padding: 10px 14px; border-radius: 6px; font-size: 12px;
+            margin-bottom: 14px; display: none; line-height: 1.6;
+        }
+        .warn-msg strong { color: #9a3412; }
+
+        .formula-ref {
+            margin-top: 8px; padding: 10px; background: #f8fafc;
+            border-radius: 6px; font-size: 11px; color: #64748b; line-height: 1.6;
+        }
+        .formula-ref code { background: #e2e8f0; padding: 1px 4px; border-radius: 3px; font-size: 10px; }
+
+        .computed-group { background: #fff; border: 1px solid #e8ecf2; border-radius: 6px; padding: 10px 12px; margin-top: 8px; }
+        .computed-group .computed-row { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px; }
+        .computed-group .cg-label { color: #64748b; }
+        .computed-group .cg-value { font-weight: 600; color: #3b82f6; font-size: 13px; }
+
+        .recovery-paths { margin-bottom: 8px; }
+        .recovery-path {
+            display: flex; align-items: center; gap: 8px;
+            padding: 6px 10px; border-radius: 6px; cursor: pointer;
+            font-size: 12px; color: #475569; transition: background 0.15s;
+            margin-bottom: 2px;
+        }
+        .recovery-path:hover { background: #f1f5f9; }
+        .recovery-path input[type="radio"] { accent-color: #3b82f6; margin: 0; }
+        .recovery-path.active { background: #eff6ff; color: #1e40af; font-weight: 600; }
+        .recovery-path .path-label { flex: 1; }
+        .recovery-path .path-desc { font-size: 10px; color: #94a3b8; font-weight: 400; }
+        .recovery-sub-fields { padding: 0 0 0 24px; }
+        .recovery-sub-fields .field { margin-bottom: 6px; }
+        .recovery-sub-fields .field input:disabled {
+            background: #f1f5f9; color: #94a3b8; cursor: not-allowed;
+        }
+
+        .safety-margin-badge {
+            display: flex; align-items: center; gap: 6px;
+            margin-top: 4px; font-size: 11px; font-weight: 600;
+        }
+        .safety-gauge {
+            position: relative; height: 8px; width: 100%;
+            background: #f1f5f9; border-radius: 4px; margin-top: 6px; overflow: visible;
+        }
+        .gauge-fill {
+            position: absolute; height: 100%; border-radius: 4px; transition: width 0.3s;
+        }
+        .gauge-marker {
+            position: absolute; top: -3px; width: 2px; height: 14px;
+            border-radius: 1px; transition: left 0.3s;
+        }
+        .gauge-rinf { background: #f59e0b; }
+        .gauge-bep { background: #3b82f6; }
+        .gauge-label {
+            position: absolute; top: 14px; font-size: 9px; transform: translateX(-50%);
+            white-space: nowrap;
+        }
+        .gauge-label-rinf { color: #f59e0b; }
+        .gauge-label-bep { color: #3b82f6; }
+
+        /* Help button */
+        .title-row { display: flex; align-items: center; gap: 8px; }
+        .help-btn {
+            width: 22px; height: 22px; border-radius: 50%;
+            border: 1.5px solid #94a3b8; background: #fff;
+            color: #64748b; font-size: 12px; font-weight: 700;
+            cursor: pointer; display: flex; align-items: center; justify-content: center;
+            transition: all 0.15s; flex-shrink: 0;
+        }
+        .help-btn:hover { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+
+        /* Modal */
+        .modal-overlay {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 1000;
+            justify-content: center; align-items: center;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #fff; border-radius: 14px; width: 680px; max-width: 92vw;
+            max-height: 85vh; overflow-y: auto; padding: 28px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+        }
+        .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+        .modal .modal-sub { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+        .modal-close {
+            float: right; background: none; border: none;
+            font-size: 20px; cursor: pointer; color: #94a3b8;
+            padding: 0 4px; line-height: 1;
+        }
+        .modal-close:hover { color: #1e293b; }
+        .modal-section { margin-bottom: 18px; }
+        .modal-section h3 {
+            font-size: 13px; font-weight: 700; color: #334155;
+            margin-bottom: 8px; padding-bottom: 5px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modal-var {
+            margin-bottom: 12px; padding: 10px 12px;
+            background: #f8fafc; border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+        }
+        .modal-var.cat-cost { border-left-color: #f59e0b; }
+        .modal-var.cat-weibull { border-left-color: #10b981; }
+        .modal-var.cat-volume { border-left-color: #8b5cf6; }
+        .modal-var h4 { font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+        .modal-var p { font-size: 11.5px; color: #475569; line-height: 1.6; margin-bottom: 3px; }
+        .modal-var .tag {
+            display: inline-block; font-size: 10px; padding: 1px 6px;
+            border-radius: 4px; font-weight: 600; margin-right: 4px;
+        }
+        .tag-meaning { background: #dbeafe; color: #1d4ed8; }
+        .tag-effects { background: #fef3c7; color: #92400e; }
+        .tag-basis { background: #d1fae5; color: #065f46; }
+        .tag-analogy { background: #ede9fe; color: #5b21b6; }
+
+        /* Tooltips */
+        .has-tip { cursor: help; border-bottom: 1px dotted #94a3b8; }
+        .tip-box {
+            display: none; position: fixed;
+            width: 260px; background: #1e293b; color: #f1f5f9;
+            border-radius: 8px; padding: 10px 12px;
+            font-size: 11px; line-height: 1.6; z-index: 1500;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            pointer-events: none;
+        }
+        .tip-box::after {
+            content: ''; position: absolute; top: 100%; left: 16px;
+            border: 6px solid transparent; border-top-color: #1e293b;
+        }
+        .tip-box.show { display: block; }
+        .tip-box.tip-flip::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #1e293b; }
+        .tip-box .tip-title { display: block; font-weight: 700; color: #93c5fd; margin-bottom: 4px; font-size: 11.5px; }
+        .tip-box .tip-analogy { display: block; color: #c4b5fd; font-style: italic; margin-top: 5px; padding-top: 5px; border-top: 1px solid rgba(255,255,255,0.1); }
+
+        /* ── Compare Mode Toggle ── */
+        .compare-toggle-bar {
+            display: flex; align-items: center; gap: 10px;
+            margin-bottom: 14px; padding: 10px 14px;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+        }
+        .compare-toggle-bar .toggle-label { font-size: 13px; font-weight: 600; color: #334155; }
+        .toggle-switch {
+            position: relative; width: 40px; height: 22px;
+            background: #cbd5e1; border-radius: 11px;
+            cursor: pointer; transition: background 0.2s;
+        }
+        .toggle-switch.on { background: #ea580c; }
+        .toggle-switch .toggle-knob {
+            position: absolute; top: 2px; left: 2px;
+            width: 18px; height: 18px; background: #fff;
+            border-radius: 50%; transition: left 0.2s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle-switch.on .toggle-knob { left: 20px; }
+        .compare-toggle-bar .toggle-desc { font-size: 11px; color: #94a3b8; }
+
+        /* ── Scenario B Panel ── */
+        .section-b {
+            margin-bottom: 12px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            border-radius: 10px;
+            padding: 14px 14px 10px;
+            display: none;
+        }
+        .section-b .section-title {
+            color: #ea580c;
+            border-bottom-color: #fed7aa;
+        }
+        .section-b .presets button.active { background: #ea580c; border-color: #ea580c; }
+        .section-b .computed { color: #ea580c; }
+
+        /* ── Comparison Table ── */
+        .compare-table {
+            background: #fff; border-radius: 10px; padding: 16px;
+            border: 1px solid #e2e8f0; margin-bottom: 14px;
+            display: none;
+        }
+        .compare-table h3 { font-size: 13px; font-weight: 600; margin-bottom: 10px; color: #334155; }
+        .compare-table table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .compare-table th { text-align: left; padding: 7px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b; font-weight: 600; font-size: 11px; }
+        .compare-table td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; }
+        .compare-table .col-a { color: #3b82f6; font-weight: 600; }
+        .compare-table .col-b { color: #ea580c; font-weight: 600; }
+        .compare-table .col-diff-pos { color: #22c55e; font-weight: 600; }
+        .compare-table .col-diff-neg { color: #ef4444; font-weight: 600; }
+
+        .pl-panel {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+            margin-bottom: 20px; padding: 16px;
+            background: linear-gradient(135deg, #f0f9ff 0%, #fff 100%);
+            border: 1px solid #bfdbfe; border-radius: 10px;
+        }
+        .pl-panel .pl-title {
+            grid-column: 1 / -1; font-size: 13px; font-weight: 700;
+            color: #1e40af; margin-bottom: 4px;
+        }
+        .pl-card .pl-label { font-size: 11px; color: #64748b; margin-bottom: 2px; }
+        .pl-card .pl-value { font-size: 20px; font-weight: 700; color: #1e293b; }
+        .pl-card .pl-desc { font-size: 10px; color: #94a3b8; margin-top: 1px; }
+        .pl-card .pl-compare { font-size: 11px; color: #ea580c; margin-top: 4px; font-weight: 600; display: none; }
+        .pl-positive .pl-value { color: #16a34a; }
+        .pl-negative .pl-value { color: #dc2626; }
+
+        @media (max-width: 960px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
+            .metrics { grid-template-columns: repeat(2, 1fr); }
+            .pl-panel { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+        <div class="title-row">
+            <h1>반품 BEP 시뮬레이터 v4</h1>
+            <button class="help-btn" onclick="document.getElementById('helpModal').classList.add('open')" title="도움말">?</button>
+        </div>
+        <p class="subtitle">변수를 조정하여 BEP 반품률과 수익률을 실시간 시뮬레이션</p>
+
+        <div class="section">
+            <div class="section-title">마진 설정 (A)</div>
+            <div class="presets" id="presetsA">
+                <button onclick="applyMargin('low')" id="pm-low">저마진 ~22%</button>
+                <button onclick="applyMargin('mid')" id="pm-mid">중마진 ~40%</button>
+                <button onclick="applyMargin('high')" id="pm-high" class="active">프리미엄 ~60%</button>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">판매가<span class="tip-box"><span class="tip-title">판매가 (Price)</span>판매 단위당 수익. G(이익)과 가격 탄력성 모델의 기준점으로 사용됩니다.<br>▸ 영향: 마진, BEP, 탄력성 통한 판매량<br>▸ 기준: Gentle Monster 등 프리미엄 아이웨어 가격대<span class="tip-analogy">택시 미터기처럼, 요금을 올리면 주머니엔 더 들어오지만 손님이 다른 앱을 켜기 시작한다.</span></span></span> <span class="unit">$</span></label>
+                    <input type="number" id="price" value="550" step="10" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">매출원가<span class="tip-box"><span class="tip-title">매출원가 (COGS)</span>제품 한 개당 원가. G(이익)을 줄이면서 동시에 L(반품 손실)을 늘리는 이중 타격 구조입니다.<br>▸ 영향: 마진(G↓), 반품 손실(L↑), BEP<br>▸ 기준: 프리미엄 아이웨어 ~60% 매출총이익률<span class="tip-analogy">댐의 균열처럼, 원가가 오르면 마진에서도 새고 반품 손실에서도 동시에 새어나간다.</span></span></span> <span class="unit">$</span></label>
+                    <input type="number" id="cogs" value="220" step="10" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label>매출총이익률</label>
+                <div class="computed" id="disp-margin">60.0%</div>
+            </div>
+        </div>
+
+        <!-- Scenario B Margin Panel -->
+        <div class="section-b" id="sectionB">
+            <div class="section-title">마진 설정 (B)</div>
+            <div class="presets">
+                <button onclick="applyMarginB('low')" id="pmb-low" class="active">저마진 ~22%</button>
+                <button onclick="applyMarginB('mid')" id="pmb-mid">중마진 ~40%</button>
+                <button onclick="applyMarginB('high')" id="pmb-high">프리미엄 ~60%</button>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>판매가 B <span class="unit">$</span></label>
+                    <input type="number" id="priceB" value="550" step="10" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label>매출원가 B <span class="unit">$</span></label>
+                    <input type="number" id="cogsB" value="429" step="10" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label>매출총이익률 B</label>
+                <div class="computed" id="disp-marginB" style="color:#ea580c">22.0%</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">반품 비용</div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">배송비 (왕복)<span class="tip-box"><span class="tip-title">배송비 (Round-trip Shipping)</span>반품 1건당 왕복 운송비. 소비자 회수 + 창고 입고까지의 물류 비용입니다.<br>▸ 영향: 반품 손실(L) 직접 증가, BEP 하락<br>▸ 기준: UPS/FedEx 편도 $12~18 합산<span class="tip-analogy">헛걸음 택배처럼, 물건이 돌아오면 배달기사가 두 번 움직인 기름값을 내가 떠안는다.</span></span></span> <span class="unit">$</span></label>
+                    <input type="number" id="shipping" value="30" step="5" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">검수/재입고비<span class="tip-box"><span class="tip-title">검수/재입고비 (Inspection & Restocking)</span>반품 제품의 상태 확인, 분류, 재포장, 재고 업데이트 인건비입니다.<br>▸ 영향: 반품 손실(L) 직접 증가, BEP 하락<br>▸ 기준: 3PL 창고 반품 처리 단가 $15~25<span class="tip-analogy">공항 입국심사처럼, 반품 상품도 재입고 전 '신원 확인'을 거쳐야 하고 그 인건비가 원가에 얹힌다.</span></span></span> <span class="unit">$</span></label>
+                    <input type="number" id="labor" value="20" step="5" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label><span class="has-tip">포장재 손실<span class="tip-box"><span class="tip-title">포장재 손실 (Packaging Loss)</span>개봉 시 손상/재사용 불가된 포장재 원가 손실.<br>▸ 영향: L 직접 증가, BEP 하락<span class="tip-analogy">생일 케이크 상자처럼, 한 번 뜯으면 원래대로 돌아갈 수 없다.</span></span></span> <span class="unit">$</span></label>
+                <input type="number" id="packaging" value="10" step="5" oninput="calc()">
+            </div>
+
+            <div class="section-title" style="margin-top:10px; font-size:12px;">반품 제품 회수 경로</div>
+            <div class="recovery-paths">
+                <label class="recovery-path active" id="rp-salvage">
+                    <input type="radio" name="recoveryPath" value="salvage" checked onchange="onRecoveryPathChange()">
+                    <span class="path-label">경로 1: 부품/벌크 매각<br><span class="path-desc">잔존가치로 L 차감</span></span>
+                </label>
+                <label class="recovery-path" id="rp-refurb">
+                    <input type="radio" name="recoveryPath" value="refurb" onchange="onRecoveryPathChange()">
+                    <span class="path-label">경로 2: 리퍼브 재판매<br><span class="path-desc">원가 회수 - 리퍼브 비용</span></span>
+                </label>
+                <label class="recovery-path" id="rp-mixed">
+                    <input type="radio" name="recoveryPath" value="mixed" onchange="onRecoveryPathChange()">
+                    <span class="path-label">경로 3: 혼합<br><span class="path-desc">두 경로 비율 분배</span></span>
+                </label>
+            </div>
+
+            <div class="recovery-sub-fields">
+                <div class="field-row">
+                    <div class="field">
+                        <label><span class="has-tip">잔존가치<span class="tip-box"><span class="tip-title">잔존가치 (Salvage Value)</span>반품 제품에서 회수 가능한 금액. 부품 매각·B-Stock 재판매 등으로 반품 손실(L)을 줄여줍니다.<br>▸ 영향: L 감소 → BEP 반품률 상승(유리)<br>▸ 경로 1(부품/벌크 매각) 선택 시 활성화<span class="tip-analogy">중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.</span></span></span> <span class="unit">$</span></label>
+                        <input type="number" id="salvage" value="10" step="5" oninput="calc()">
+                    </div>
+                    <div class="field">
+                        <label><span class="has-tip">매각 비율<span class="tip-box"><span class="tip-title">매각 비율 (Salvage Percentage)</span>반품 제품 중 부품/벌크 매각 경로로 처리하는 비율. 경로 3(혼합) 선택 시 활성화됩니다.<br>▸ 영향: 매각 비율 + 리퍼브 비율 = 100%. 매각 비율이 높을수록 잔존가치의 비중이 커짐<br>▸ 경로 1: 자동 100% / 경로 2: 자동 0% / 경로 3: 직접 입력<span class="tip-analogy">파이를 나누는 것처럼, 반품 제품을 '부품으로 팔 것'과 '고쳐서 다시 팔 것'으로 비율을 정한다.</span></span></span> <span class="unit">%</span></label>
+                        <input type="number" id="salvagePct" value="100" step="10" min="0" max="100" oninput="calc()" disabled>
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label><span class="has-tip">원가 회수율<span class="tip-box"><span class="tip-title">원가 회수율 (Cost Recovery Rate)</span>반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율. 잔존가치와 별개 경로입니다.<br>▸ 영향: L 감소 → BEP 반품률 상승(유리). 0%=전량 손실, 50%=원가 절반 회수<br>▸ 경로 2(리퍼브 재판매) 또는 경로 3(혼합) 선택 시 활성화<span class="tip-analogy">자동차 사고 후 폐차(잔존가치)와 수리 후 재판매(회수율)는 서로 다른 경로다.</span></span></span> <span class="unit">%</span></label>
+                        <input type="number" id="recoveryRate" value="50" step="5" min="0" max="100" oninput="calc()" disabled>
+                    </div>
+                    <div class="field">
+                        <label><span class="has-tip">리퍼브 비용<span class="tip-box"><span class="tip-title">리퍼브 비용 (Refurbishment Cost)</span>반품 제품을 재정비(세척, 부품 교체, 재포장)하여 재판매 가능 상태로 만드는 데 드는 비용입니다.<br>▸ 영향: L 증가 → BEP 반품률 하락(불리). 회수율이 높아도 리퍼브 비용이 크면 상쇄됨<br>▸ 경로 2(리퍼브 재판매) 또는 경로 3(혼합) 선택 시 활성화<span class="tip-analogy">중고차 수리비처럼, 재판매 가격을 높이려면 먼저 수리비를 투자해야 한다.</span></span></span> <span class="unit">$/건</span></label>
+                        <input type="number" id="refurbCost" value="15" step="5" min="0" oninput="calc()" disabled>
+                    </div>
+                </div>
+            </div>
+            <div class="field">
+                <label>순 반품비용 <span class="unit">/건</span></label>
+                <div class="computed" id="disp-retcost">$270</div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">반품 모델 (Weibull)</div>
+            <div class="field">
+                <label>카테고리 프리셋</label>
+                <select id="category" onchange="onCatChange()">
+                    <option value="electronics">전자기기 (초기 집중형, k=1.5)</option>
+                    <option value="hybrid">하이브리드 (아이웨어+전자기기, k=1.3)</option>
+                    <option value="eyewear" selected>아이웨어 (이중 파형, k=1.1)</option>
+                    <option value="fashion">패션웨어 (분산형, k=0.85)</option>
+                    <option value="custom">직접 입력</option>
+                </select>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">R&#8734; 최대 반품률<span class="tip-box"><span class="tip-title">R&#8734; 최대 반품률 (Asymptotic Return Rate)</span>시간이 무한히 흐를 때 도달하는 이론적 최대 반품률. Weibull CDF의 점근선입니다.<br>▸ 영향: 각 시점 반품률, &#955; 역산, 곡선 형태<br>▸ 기준: 아이웨어 카테고리 28% (패션 30~40%보다 낮음)<span class="tip-analogy">수조의 만수위선처럼, R&#8734;는 반품이 차오를 수 있는 최대 수위다. 수위가 높을수록 BEP를 넘기기 쉬워진다.</span></span></span> <span class="unit">%</span></label>
+                    <input type="number" id="r_inf" value="28" step="1" min="1" max="95" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">k 형상 파라미터<span class="tip-box"><span class="tip-title">k 형상 파라미터 (Weibull Shape)</span>반품이 시간축에서 어떻게 집중되는지 결정. k&gt;1이면 초반 집중, k&lt;1이면 장기 분산.<br>▸ 영향: 반품 시점 분포, 특정 기간 내 누적률<br>▸ 기준: 아이웨어 k=1.1 (전자기기 1.5 ~ 패션 0.85 사이)<span class="tip-analogy">버스 파업 뉴스처럼, k가 크면 당일 민원 폭주 후 잠잠, k가 작으면 며칠에 걸쳐 드문드문 불평.</span></span></span></label>
+                    <input type="number" id="k_param" value="1.1" step="0.05" min="0.1" max="5" oninput="calc()">
+                </div>
+            </div>
+            <div class="field">
+                <label><span class="has-tip">14일 기준 반품률<span class="tip-box"><span class="tip-title">r14 기준 반품률 (14-day Observed Rate)</span>구매 후 14일 시점의 실측 누적 반품률. R&#8734;·k와 함께 &#955;(척도 파라미터)를 역산합니다.<br>▸ 영향: Weibull &#955; 역산, 반품 곡선 속도<br>▸ 기준: R&#8734;의 ~71%가 14일 내 발생 (아이웨어 초기 피팅 판단)<span class="tip-analogy">검진 중간 결과지처럼, 14일 차 수치 하나로 전체 반품 곡선의 '속도'를 역추적하는 단서.</span></span></span> <span class="unit">%</span></label>
+                <input type="number" id="r14" value="20" step="1" min="1" max="90" oninput="calc()">
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">판매량 모델 (탄력성)</div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">기준 판매량<span class="tip-box"><span class="tip-title">기준 판매량 (Base Volume)</span>참조 조건(판매가 $550, 반품기간 30일)에서의 월 판매량. 탄력성 모델의 기준점입니다.<br>▸ 영향: V_adj 기준점, 규모효과(&#945;·&#946;) 분모<br>▸ 기준: 단일 SKU 프리미엄 e-커머스 월 판매량<span class="tip-analogy">체중계의 '표준 체중'처럼, 모든 변화를 이 기준 대비로 환산한다. 기준이 낮으면 규모효과가 크게 작동.</span></span></span> <span class="unit">개/월</span></label>
+                    <input type="number" id="baseVol" value="1000" step="100" min="0" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">반품허용기간<span class="tip-box"><span class="tip-title">반품허용기간 (Return Window)</span>소비자가 반품 가능한 정책 기간. (Window/30)^&#949;w로 판매량에 영향을 줍니다.<br>▸ 영향: 탄력성 통한 판매량, 기간 내 반품 비율<br>▸ 기준: 30일 — e-커머스 업계 표준 정책<span class="tip-analogy">수영장 무료 체험처럼, 이용 기간이 짧으면 망설이다 등록을 안 한다. 고객의 '안전망' 크기가 구매 용기와 직결.</span></span></span> <span class="unit">일</span></label>
+                    <input type="number" id="retWindow" value="30" step="1" min="1" max="365" oninput="calc()">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">가격 탄력성 (&#949;p)<span class="tip-box"><span class="tip-title">&#949;p 가격 탄력성 (Price Elasticity)</span>가격 변화 대비 수요 변화 민감도. 음수 = 가격↑ 수요↓. |&#949;p|&gt;1이면 탄력적 수요.<br>▸ 영향: 가격 변경 시 V_adj 변동, 총이익 연쇄<br>▸ 기준: 프리미엄 패션 액세서리 -1.2 (Kalla 2017)<span class="tip-analogy">고무줄에 묶인 돌멩이처럼, 가격을 올리면 수요가 더 크게 반대로 튕겨나간다. |1.2|이므로 당긴 거리보다 더 멀리.</span></span></span></label>
+                    <input type="number" id="priceElast" value="-1.2" step="0.1" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">반품기간 탄력성 (&#949;w)<span class="tip-box"><span class="tip-title">&#949;w 반품기간 탄력성 (Window Elasticity)</span>반품기간 변화 대비 판매량 변화 민감도. 양수 = 기간↑ 판매↑ (소비자 신뢰 효과).<br>▸ 영향: 반품기간 변경 시 V_adj 변동<br>▸ 기준: 0.20 — Ertekin &amp; Agrawal (2021, Management Science)<span class="tip-analogy">온천 온도처럼, 조금 더 따뜻하면 손님이 살짝 더 오지만 주된 이유는 아니다. 실재하지만 온화한 영향.</span></span></span></label>
+                    <input type="number" id="retElast" value="0.20" step="0.05" oninput="calc()">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label><span class="has-tip">비용 규모효과 (&#945;)<span class="tip-box"><span class="tip-title">&#945; 비용 규모효과 (Cost Scale Effect)</span>판매량 변화 대비 단위 원가 변화. 음수 = 물량↑ 단가↓ (규모의 경제).<br>▸ 영향: V_adj 변동 시 조정 단위 원가 변동<br>▸ 기준: -0.25 — BCG 경험곡선 + 3PL 물량 할인<span class="tip-analogy">대량 구매 할인처럼, 물량이 늘면 원재료뿐 아니라 배송·포장·인건비까지 한꺼번에 단가가 깎인다.</span></span></span></label>
+                    <input type="number" id="costScale" value="-0.25" step="0.05" oninput="calc()">
+                </div>
+                <div class="field">
+                    <label><span class="has-tip">잔존가치 규모효과 (&#946;)<span class="tip-box"><span class="tip-title">&#946; 잔존가치 규모효과 (Salvage Scale Effect)</span>판매량 변화 대비 잔존가치 회수율 변화. 양수 = 물량↑ 회수율↑.<br>▸ 영향: V_adj 변동 시 조정 잔존가치 변동<br>▸ 기준: 0.15 — B-Stock/Optoro 리커머스 데이터<span class="tip-analogy">중고차 딜러 경매처럼, 매물이 많으면 경매장이 활성화되어 입찰 경쟁이 붙고 대당 낙찰가가 올라간다.</span></span></span></label>
+                    <input type="number" id="salvScale" value="0.15" step="0.05" oninput="calc()">
+                </div>
+            </div>
+            <div class="computed-group">
+                <div class="computed-row"><span class="cg-label">예상 판매량</span><span class="cg-value" id="cg-vol">1,000 개/월</span></div>
+                <div class="computed-row"><span class="cg-label">반품비용/건</span><span class="cg-value" id="cg-cost">$60</span></div>
+                <div class="computed-row"><span class="cg-label">잔존가치/건</span><span class="cg-value" id="cg-salv">$10</span></div>
+            </div>
+        </div>
+
+        <div class="formula-ref">
+            <strong>수식 참고</strong><br>
+            <code>G = 판매가 - 매출원가</code><br>
+            <code>L = 경로별 원가 + 배송비 + 검수/재입고비 + 포장재 (회수경로 참조)</code><br>
+            <code>BEP = G / (G + L)</code><br>
+            <code>R(w) = R&#8734; &times; [1 - e^(-(w/&lambda;)^k)]</code><br>
+            <code>&pi;/G = 1 - R(w) / BEP</code><br>
+            <strong>판매량 모델</strong><br>
+            <code>V_adj = V_base &times; (Price/550)^&epsilon;p &times; (Window/30)^&epsilon;w</code><br>
+            <code>Cost_adj = Cost &times; (V_adj/V_base)^&alpha;</code><br>
+            <code>Salvage_adj = Salvage &times; (V_adj/V_base)^&beta;</code>
+        </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div id="error" class="error-msg"></div>
+        <div id="warning" class="warn-msg"></div>
+
+        <!-- Compare Mode Toggle -->
+        <div class="compare-toggle-bar">
+            <span class="toggle-label">비교 모드</span>
+            <div class="toggle-switch" id="compareToggle" onclick="toggleCompare()">
+                <div class="toggle-knob"></div>
+            </div>
+            <span class="toggle-desc">시나리오 A vs B 마진 구조 비교</span>
+        </div>
+
+        <div class="metrics">
+            <div class="metric-card mc-neutral" id="card-g">
+                <div class="label">G 매출총이익</div>
+                <div class="value" id="val-g">$330</div>
+                <div class="desc">판매가 - 매출원가</div>
+                <div class="compare-val" id="cv-g"></div>
+            </div>
+            <div class="metric-card" id="card-l">
+                <div class="label">L 반품 건당 손실</div>
+                <div class="value" id="val-l">$270</div>
+                <div class="desc" id="desc-l">매출원가 + 반품비용 - 잔존가치</div>
+                <div class="compare-val" id="cv-l"></div>
+            </div>
+            <div class="metric-card" id="card-bep">
+                <div class="label">BEP 반품률</div>
+                <div class="value" id="val-bep">55.0%</div>
+                <div class="desc" id="desc-lg">L/G = 0.82</div>
+                <div class="safety-margin-badge">
+                    <span id="safety-margin" style="color:#16a34a">안전마진 27.0pp</span>
+                </div>
+                <div class="safety-gauge">
+                    <div class="gauge-fill" id="gauge-safe-zone" style="left:0;width:55%;background:rgba(34,197,94,0.15);"></div>
+                    <div class="gauge-marker gauge-rinf" id="gauge-rinf" style="left:28%"></div>
+                    <div class="gauge-marker gauge-bep" id="gauge-bep" style="left:55%"></div>
+                    <span class="gauge-label gauge-label-rinf" id="gauge-label-rinf" style="left:28%">R&#8734;</span>
+                    <span class="gauge-label gauge-label-bep" id="gauge-label-bep" style="left:55%">BEP 반품률</span>
+                </div>
+                <div class="compare-val" id="cv-bep"></div>
+            </div>
+            <div class="metric-card" id="card-day">
+                <div class="label">BEP 반품률 도달일</div>
+                <div class="value" id="val-day">-</div>
+                <div class="desc" id="desc-day">90일 내</div>
+                <div class="compare-val" id="cv-day"></div>
+            </div>
+        </div>
+
+        <div class="pl-panel" id="plPanel">
+            <div class="pl-title">월간 P&L 임팩트</div>
+            <div class="pl-card">
+                <div class="pl-label">월 매출</div>
+                <div class="pl-value" id="pl-revenue" data-raw="0">$550,000</div>
+                <div class="pl-desc">V_adj × 판매가</div>
+                <div class="pl-compare" id="pl-cv-revenue"></div>
+            </div>
+            <div class="pl-card">
+                <div class="pl-label">월 반품비용</div>
+                <div class="pl-value" id="pl-return-cost" data-raw="0">$0</div>
+                <div class="pl-desc">V_adj × R(w) × L</div>
+                <div class="pl-compare" id="pl-cv-return-cost"></div>
+            </div>
+            <div class="pl-card">
+                <div class="pl-label">월 순이익</div>
+                <div class="pl-value" id="pl-net-profit" data-raw="0">$0</div>
+                <div class="pl-desc">V_adj × G × (1 − R(w)/BEP)</div>
+                <div class="pl-compare" id="pl-cv-net-profit"></div>
+            </div>
+            <div class="pl-card">
+                <div class="pl-label">반품/매출 비율</div>
+                <div class="pl-value" id="pl-return-pct">0%</div>
+                <div class="pl-desc">반품비용 ÷ 매출</div>
+                <div class="pl-compare" id="pl-cv-return-pct"></div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <h3>반품기간별 누적 반품률</h3>
+            <div class="chart-wrapper"><canvas id="chartReturn"></canvas></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>반품기간별 수익률 (&pi;/G)</h3>
+                <span class="chart-desc">이론상 최대 이익(G) 대비 몇 %를 지켜냈는가</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chartProfit"></canvas></div>
+        </div>
+
+        <div class="chart-container">
+            <div class="chart-header">
+                <h3>반품허용기간별 판매량</h3>
+                <span class="chart-desc">반품허용기간 정책이 판매량에 미치는 영향 (탄력성 모델)</span>
+            </div>
+            <div class="chart-wrapper"><canvas id="chartVolume"></canvas></div>
+        </div>
+
+        <!-- Comparison Table -->
+        <div class="compare-table" id="compareTable">
+            <h3>시나리오 A vs B 비교</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>지표</th>
+                        <th style="color:#3b82f6">시나리오 A</th>
+                        <th style="color:#ea580c">시나리오 B</th>
+                        <th>차이</th>
+                    </tr>
+                </thead>
+                <tbody id="ctbody"></tbody>
+            </table>
+        </div>
+
+        <div class="summary-table">
+            <h3>주요 기간별 수치</h3>
+            <table>
+                <thead id="thead"></thead>
+                <tbody id="tbody"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Help Modal -->
+<div class="modal-overlay" id="helpModal">
+    <div class="modal">
+        <button class="modal-close" onclick="document.getElementById('helpModal').classList.remove('open')">&times;</button>
+        <h2>변수 도움말</h2>
+        <p class="modal-sub">각 변수의 의미, 영향, 설정 근거, 비유를 확인하세요. 라벨에 마우스를 올리면 간단한 툴팁도 볼 수 있습니다.</p>
+
+        <div class="modal-section">
+            <h3>마진 설정</h3>
+            <div class="modal-var">
+                <h4>판매가 (Price)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매 단위당 수익. G(이익)과 가격 탄력성 모델의 기준점으로 사용됩니다.</p>
+                <p><span class="tag tag-effects">영향</span> 단위 이익(G) 직접 변동 / BEP 변동 / 가격 탄력성 통해 판매량 변동 / 규모효과 연쇄 변동</p>
+                <p><span class="tag tag-basis">근거</span> Gentle Monster 등 프리미엄 아이웨어 가격대. $550은 탄력성 공식의 기준가로도 사용.</p>
+                <p><span class="tag tag-analogy">비유</span> 택시 미터기처럼, 요금을 올리면 주머니엔 더 들어오지만 손님이 다른 앱을 켜기 시작한다.</p>
+            </div>
+            <div class="modal-var">
+                <h4>매출원가 (COGS)</h4>
+                <p><span class="tag tag-meaning">의미</span> 제품 한 개당 원가. G(이익)을 줄이면서 동시에 L(반품 손실)을 늘리는 이중 타격 구조입니다.</p>
+                <p><span class="tag tag-effects">영향</span> 단위 이익(G↓) / 반품 손실(L↑) / BEP 변동 — 하나의 변수가 양쪽에 동시 작용</p>
+                <p><span class="tag tag-basis">근거</span> $220은 판매가 $550 대비 ~60% 매출총이익률. 프리미엄 아이웨어 업계 평균 마진 구조에 부합.</p>
+                <p><span class="tag tag-analogy">비유</span> 댐의 균열처럼, 원가가 오르면 마진에서도 새고 반품 손실에서도 동시에 새어나간다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>반품 비용</h3>
+            <div class="modal-var cat-cost">
+                <h4>배송비 — 왕복 (Round-trip Shipping)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 1건당 왕복 운송비. 소비자에게 반품 레이블을 제공하고 창고까지 회수하는 비용.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락 (더 낮은 반품률에서 적자 전환)</p>
+                <p><span class="tag tag-basis">근거</span> 미국/캐나다 UPS/FedEx 반품 레이블 편도 $12~18 합산. 국제 프리미엄 패키지 왕복 운임 기준.</p>
+                <p><span class="tag tag-analogy">비유</span> 헛걸음 택배처럼, 물건이 돌아오는 순간 배달기사가 두 번 움직인 기름값을 내가 떠안는다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>검수/재입고비 (Inspection & Restocking)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품의 상태 확인, 분류, 재포장, 재고 시스템 업데이트 인건비.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락</p>
+                <p><span class="tag tag-basis">근거</span> 3PL 창고 반품 처리 단가 $15~25. 아이웨어는 렌즈 정밀 검수가 필요하여 $20 설정.</p>
+                <p><span class="tag tag-analogy">비유</span> 공항 입국심사처럼, 반품 상품도 재입고 전 '신원 확인'을 거쳐야 하고 그 시급이 원가에 얹힌다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>포장재 손실 (Packaging Loss)</h4>
+                <p><span class="tag tag-meaning">의미</span> 개봉 시 손상/재사용 불가된 포장재(박스, 봉인 씰, 완충재) 원가 손실.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 직접 증가 / BEP 하락</p>
+                <p><span class="tag tag-basis">근거</span> 프리미엄 아이웨어 고급 패키징(자석 클로저 박스, 로고 각인 케이스) 단가 $10.</p>
+                <p><span class="tag tag-analogy">비유</span> 생일 케이크 상자처럼, 한 번 뜯고 나면 다시 그 설레는 외형으로 돌아올 수 없다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>잔존가치 (Salvage Value)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품에서 회수 가능한 금액. 재판매·리퍼브·부품 활용으로 L을 줄여줍니다.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 감소 / BEP 상승(유리) / &#946; 규모효과와 결합하여 판매량 따라 변동</p>
+                <p><span class="tag tag-basis">근거</span> 개봉 아이웨어는 위생·규제상 완전 회수가 어려움. B-Stock 중고 재판매 한계를 반영한 보수적 $10.</p>
+                <p><span class="tag tag-analogy">비유</span> 중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>매각 비율 (Salvage Percentage)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품 중 부품/벌크 매각 경로로 처리하는 비율. 경로 3(혼합) 선택 시 직접 입력.</p>
+                <p><span class="tag tag-effects">영향</span> 매각 비율 + 리퍼브 비율 = 100%. 매각 비율이 높을수록 잔존가치의 비중이 커짐.</p>
+                <p><span class="tag tag-basis">근거</span> 경로 1=100%(전량 매각), 경로 2=0%(전량 리퍼브), 경로 3=직접 비율 입력.</p>
+                <p><span class="tag tag-analogy">비유</span> 파이를 나누는 것처럼, 반품 제품을 '부품으로 팔 것'과 '고쳐서 다시 팔 것'으로 비율을 정한다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>원가 회수율 (Cost Recovery Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율. 잔존가치와 별개 경로.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 감소 / BEP 상승(유리) / 0%=전량 손실(현행), 50%=원가 절반 회수</p>
+                <p><span class="tag tag-basis">근거</span> 잔존가치는 부품/벌크 매각, 회수율은 제품 재정비 후 재판매. 아이웨어는 렌즈 교체 후 리퍼브 가능.</p>
+                <p><span class="tag tag-analogy">비유</span> 자동차 사고 수리처럼, 폐차(잔존가치)와 수리 후 재판매(회수율)는 다른 경로다.</p>
+            </div>
+            <div class="modal-var cat-cost">
+                <h4>리퍼브 비용 (Refurbishment Cost)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품 제품을 재정비(세척, 부품 교체, 재포장)하여 재판매 가능 상태로 만드는 데 드는 건당 비용.</p>
+                <p><span class="tag tag-effects">영향</span> 반품 손실(L) 증가 / BEP 반품률 하락(불리). 회수율이 높아도 리퍼브 비용이 크면 상쇄됨.</p>
+                <p><span class="tag tag-basis">근거</span> 아이웨어 리퍼브: 렌즈 교체($8~12) + 프레임 세척/연마($3~5) + 재포장($2~3) ≈ $15.</p>
+                <p><span class="tag tag-analogy">비유</span> 중고차 수리비처럼, 재판매 가격을 높이려면 먼저 수리비를 투자해야 한다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>반품 모델 (Weibull)</h3>
+            <div class="modal-var cat-weibull">
+                <h4>R&#8734; 최대 반품률 (Asymptotic Return Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 시간이 무한히 흐를 때 이론적 최대 반품률. Weibull CDF의 점근선(Asymptote).</p>
+                <p><span class="tag tag-effects">영향</span> 각 시점 반품률 변동 / &#955; 역산 / 곡선 전체 형태 변경</p>
+                <p><span class="tag tag-basis">근거</span> 아이웨어 28%. 일반 패션(30~40%)보다 낮고 전자기기(10~15%)보다 높은 수준.</p>
+                <p><span class="tag tag-analogy">비유</span> 수조의 만수위선처럼, R&#8734;는 반품이 차오를 수 있는 최대 수위다. 수위가 높을수록 BEP를 넘기기 쉬워진다.</p>
+            </div>
+            <div class="modal-var cat-weibull">
+                <h4>k 형상 파라미터 (Weibull Shape)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품의 시간 집중도. k&gt;1이면 초반 집중(결함 중심), k&lt;1이면 장기 분산(패션/핏 중심).</p>
+                <p><span class="tag tag-effects">영향</span> 반품 시점 분포 형태 / 특정 기간 내 누적률 변동 / &#955; 역산값 변동</p>
+                <p><span class="tag tag-basis">근거</span> 아이웨어 k=1.1. 전자기기(1.5, 초기 결함 집중)와 패션(0.85, 장기 분산) 사이.</p>
+                <p><span class="tag tag-analogy">비유</span> 버스 파업 뉴스처럼, k가 크면 당일 민원 폭주 후 잠잠, k가 작으면 며칠에 걸쳐 드문드문 불평.</p>
+            </div>
+            <div class="modal-var cat-weibull">
+                <h4>r14 기준 반품률 (14-day Observed Rate)</h4>
+                <p><span class="tag tag-meaning">의미</span> 구매 후 14일 시점의 실측 누적 반품률. R&#8734;·k와 함께 &#955;를 역산하는 핵심 관측값.</p>
+                <p><span class="tag tag-effects">영향</span> Weibull &#955; 역산 / 반품 곡선 속도 / 각 기간 내 예상 반품 비율</p>
+                <p><span class="tag tag-basis">근거</span> 20% = R&#8734;(28%)의 ~71%가 14일 내 발생. 아이웨어 소비자 초기 2주 피팅 판단 경향 반영.</p>
+                <p><span class="tag tag-analogy">비유</span> 검진 중간 결과지처럼, 14일 차 수치 하나로 전체 반품 곡선의 '속도'를 역추적하는 단서.</p>
+            </div>
+            <div class="modal-var cat-weibull">
+                <h4>하이브리드 카테고리 (아이웨어+전자기기)</h4>
+                <p><span class="tag tag-meaning">의미</span> 아이웨어와 전자기기 특성이 혼합된 제품(예: 스마트 안경). 두 카테고리 사이의 반품 패턴.</p>
+                <p><span class="tag tag-effects">영향</span> R&#8734;=25%, k=1.3. 전자기기(24%, 1.5)와 아이웨어(28%, 1.1) 사이 내삽.</p>
+                <p><span class="tag tag-basis">근거</span> 전자기기의 초기 결함 집중 패턴과 아이웨어의 착용감 반품이 혼합. r14=20%, k=1.3일 때 R(30)&#8776;24.7%.</p>
+                <p><span class="tag tag-analogy">비유</span> 스마트워치가 시계 핏과 전자기기 불량을 동시에 겪는 것처럼, 두 패턴이 겹쳐 나타난다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>판매량 모델 (탄력성)</h3>
+            <div class="modal-var cat-volume">
+                <h4>기준 판매량 (Base Volume)</h4>
+                <p><span class="tag tag-meaning">의미</span> 참조 조건(판매가 $550, 반품기간 30일)에서의 월 판매량. 탄력성 모델의 기준점.</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 기준점 / 규모효과(&#945;·&#946;) 분모 / 총 이익·총 반품 손실 절대값 변동</p>
+                <p><span class="tag tag-basis">근거</span> 단일 아이웨어 SKU 프리미엄 e-커머스 월 판매량 1,000개. 비율 계산의 정규화 기준점.</p>
+                <p><span class="tag tag-analogy">비유</span> 체중계의 '표준 체중'처럼, 모든 변화를 이 기준 대비로 환산한다. 기준을 낮게 잡으면 규모효과가 크게 작동.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>반품허용기간 (Return Window)</h4>
+                <p><span class="tag tag-meaning">의미</span> 소비자가 반품 가능한 정책 기간. (Window/30)^&#949;w로 판매량에 영향.</p>
+                <p><span class="tag tag-effects">영향</span> 탄력성(&#949;w) 통한 V_adj 변동 / Weibull 기간 내 반품 비율 / 총 반품 건수 변동</p>
+                <p><span class="tag tag-basis">근거</span> 30일 = e-커머스 업계 가장 보편적 반품 정책. Amazon, Shopify 기반 브랜드 표준.</p>
+                <p><span class="tag tag-analogy">비유</span> 수영장 무료 체험처럼, 이용 기간이 짧으면 망설이다 등록을 안 한다. 고객의 '안전망' 크기가 구매 용기와 직결.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>&#949;p 가격 탄력성 (Price Elasticity)</h4>
+                <p><span class="tag tag-meaning">의미</span> 가격 변화 대비 수요 변화 민감도. 음수 = 가격↑ 수요↓. |&#949;p|&gt;1이면 탄력적.</p>
+                <p><span class="tag tag-effects">영향</span> 가격 변경 시 V_adj 변동 / 총이익·반품비용 연쇄 변동 / 규모효과 연쇄</p>
+                <p><span class="tag tag-basis">근거</span> -1.2 = Kalla(2017) 패션 탄력성 연구, McKinsey 프리미엄 분석 종합. 명품보다 탄력적, 생필품보다 비탄력적.</p>
+                <p><span class="tag tag-analogy">비유</span> 고무줄에 묶인 돌멩이처럼, 가격을 올리면 수요가 더 크게 반대로 튕겨나간다.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>&#949;w 반품기간 탄력성 (Window Elasticity)</h4>
+                <p><span class="tag tag-meaning">의미</span> 반품기간 변화 대비 판매량 민감도. 양수 = 기간↑ 판매↑ (소비자 신뢰 효과).</p>
+                <p><span class="tag tag-effects">영향</span> 반품기간 변경 시 V_adj 변동 / 총이익·반품비용 연쇄</p>
+                <p><span class="tag tag-basis">근거</span> 0.20 = Ertekin & Agrawal(2021, Management Science) 주얼리 소매업체 실험에서 역산.</p>
+                <p><span class="tag tag-analogy">비유</span> 온천 온도처럼, 조금 더 따뜻하면 손님이 살짝 더 오지만 주된 이유는 아니다. 온화한 영향.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>&#945; 비용 규모효과 (Cost Scale Effect)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매량 변화 대비 단위 원가 변화. 음수 = 물량↑ 단가↓ (규모의 경제).</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 변동 시 조정 단위 원가 변동 / 총이익 개선 / BEP 변동</p>
+                <p><span class="tag tag-basis">근거</span> -0.25 = BCG 경험곡선(80~85% 학습률) + 3PL 물량 할인 데이터 혼합.</p>
+                <p><span class="tag tag-analogy">비유</span> 대량 구매 할인처럼, 물량이 늘면 원재료뿐 아니라 배송·포장·인건비까지 한꺼번에 단가가 깎인다.</p>
+            </div>
+            <div class="modal-var cat-volume">
+                <h4>&#946; 잔존가치 규모효과 (Salvage Scale Effect)</h4>
+                <p><span class="tag tag-meaning">의미</span> 판매량 변화 대비 잔존가치 회수율 변화. 양수 = 물량↑ 회수율↑.</p>
+                <p><span class="tag tag-effects">영향</span> V_adj 변동 시 조정 잔존가치 변동 / 반품 손실(L) 차감액 변동 / BEP 변동</p>
+                <p><span class="tag tag-basis">근거</span> 0.15 = B-Stock Solutions, Optoro 리커머스 데이터 종합. 벌크 재판매 협상력 + 전용 리퍼브 채널 효과.</p>
+                <p><span class="tag tag-analogy">비유</span> 중고차 딜러 경매처럼, 매물이 많으면 경매장이 활성화되어 입찰 경쟁이 붙고 대당 낙찰가가 올라간다.</p>
+            </div>
+        </div>
+
+        <div class="modal-section">
+            <h3>비교 모드 (v3 신규)</h3>
+            <div class="modal-var" style="border-left-color:#ea580c">
+                <h4>시나리오 A vs B 비교</h4>
+                <p><span class="tag tag-meaning">의미</span> 같은 제품 카테고리에서 마진 구조(판매가, 매출원가)만 다를 때의 수익 영향 비교.</p>
+                <p><span class="tag tag-effects">영향</span> 수익률 차트에 시나리오 B 곡선 오버레이 / 비교 테이블 표시 / BEP 라인 비교</p>
+                <p><span class="tag tag-basis">근거</span> Weibull 파라미터(반품 패턴)와 반품비용은 동일. 마진만 달라서 BEP와 수익성이 어떻게 바뀌는지 비교.</p>
+                <p><span class="tag tag-analogy">비유</span> 같은 도로(반품 패턴)를 달리는 두 자동차. 연비(마진)가 다르면 같은 거리에서 연료가 바닥나는 시점이 다르다.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ── Presets ──
+const CAT = {
+    electronics: { r_inf: 24, k: 1.5 },
+    hybrid:      { r_inf: 25, k: 1.3 },
+    eyewear:     { r_inf: 28, k: 1.1 },
+    fashion:     { r_inf: 35, k: 0.85 },
+};
+const MARGIN = {
+    low:  { price: 550, cogs: 429 },
+    mid:  { price: 550, cogs: 330 },
+    high: { price: 550, cogs: 220 },
+};
+
+// ── Charts ──
+let chReturn = null, chProfit = null, chVolume = null;
+
+// ── Volume model constants ──
+const REF_PRICE = 550, REF_WINDOW = 30;
+
+// ── Compare mode state ──
+let compareOn = false;
+
+function isCompareMode() { return compareOn; }
+
+function toggleCompare() {
+    compareOn = !compareOn;
+    const toggle = document.getElementById('compareToggle');
+    toggle.classList.toggle('on', compareOn);
+    document.getElementById('sectionB').style.display = compareOn ? 'block' : 'none';
+    document.getElementById('compareTable').style.display = compareOn ? 'block' : 'none';
+    document.querySelectorAll('.compare-val').forEach(el => el.style.display = compareOn ? 'block' : 'none');
+    document.querySelectorAll('.pl-compare').forEach(el => el.style.display = compareOn ? 'block' : 'none');
+    // Force chart rebuild for dataset changes
+    if (chReturn) { chReturn.destroy(); chReturn = null; }
+    if (chProfit) { chProfit.destroy(); chProfit = null; }
+    if (chVolume) { chVolume.destroy(); chVolume = null; }
+    calc();
+}
+
+function calcVolume(i) {
+    const baseVol = i.baseVol > 0 ? i.baseVol : 1000;
+    const priceRatio = i.price > 0 ? Math.pow(i.price / REF_PRICE, i.priceElast) : 1;
+    const windowRatio = Math.pow((i.retWindow > 0 ? i.retWindow : 30) / REF_WINDOW, i.retElast);
+    const adjVol = baseVol * priceRatio * windowRatio;
+    const volRatio = adjVol / baseVol;
+    const costMult = volRatio > 0 ? Math.pow(volRatio, i.costScale) : 1;
+    const salvMult = volRatio > 0 ? Math.pow(volRatio, i.salvScale) : 1;
+    return { adjVol, volRatio, costMult, salvMult,
+             adjShip: i.ship * costMult, adjLabor: i.labor * costMult,
+             adjPack: i.pack * costMult, adjSalv: i.salv * salvMult };
+}
+
+// ── BEP label plugin (return chart) ──
+const bepLabelPlugin = {
+    id: 'bepLabel',
+    afterDraw(chart) {
+        const ctx = chart.ctx;
+        // Scenario A BEP
+        const dsA = chart.data.datasets[1];
+        if (dsA && dsA.data && dsA.data.length) {
+            const bepVal = dsA.data[0];
+            const yAxis = chart.scales.y;
+            const xAxis = chart.scales.x;
+            const y = yAxis.getPixelForValue(bepVal);
+            if (y >= yAxis.top && y <= yAxis.bottom) {
+                ctx.save();
+                ctx.fillStyle = '#ef4444';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText('BEP 반품률(A) ' + bepVal.toFixed(1) + '%', xAxis.right - 4, y - 4);
+                ctx.restore();
+            }
+        }
+        // Scenario B BEP
+        const dsB = chart.data.datasets.find(d => d.label === 'BEP 반품률 (B)');
+        if (dsB && dsB.data && dsB.data.length) {
+            const bepValB = dsB.data[0];
+            const yAxis = chart.scales.y;
+            const xAxis = chart.scales.x;
+            const y = yAxis.getPixelForValue(bepValB);
+            if (y >= yAxis.top && y <= yAxis.bottom) {
+                ctx.save();
+                ctx.fillStyle = '#ea580c';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'top';
+                ctx.fillText('BEP 반품률(B) ' + bepValB.toFixed(1) + '%', xAxis.right - 4, y + 4);
+                ctx.restore();
+            }
+        }
+    }
+};
+
+// ── Vertical line plugin ──
+const vLinePlugin = {
+    id: 'vlines',
+    afterDraw(chart) {
+        const { ctx } = chart;
+        const xAxis = chart.scales.x;
+        const yAxis = chart.scales.y;
+        [14, 30].forEach(d => {
+            const x = xAxis.getPixelForValue(d);
+            if (x < xAxis.left || x > xAxis.right) return;
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(x, yAxis.top);
+            ctx.lineTo(x, yAxis.bottom);
+            ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+            ctx.setLineDash([4, 3]);
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(0,0,0,0.3)';
+            ctx.font = '10px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(d + '일', x, yAxis.top - 5);
+            ctx.restore();
+        });
+    }
+};
+
+// ── Math ──
+function wR(w, Rinf, k, lam) {
+    return w <= 0 ? 0 : Rinf * (1 - Math.exp(-Math.pow(w / lam, k)));
+}
+
+function calLam(Rinf, k, r14) {
+    if (r14 >= Rinf || r14 <= 0 || Rinf <= 0 || k <= 0) return NaN;
+    return 14 / Math.pow(-Math.log(1 - r14 / Rinf), 1 / k);
+}
+
+function bepDay(Rinf, k, lam, bep) {
+    if (bep >= Rinf) return null;
+    if (bep <= 0) return 0;
+    const w = lam * Math.pow(-Math.log(1 - bep / Rinf), 1 / k);
+    return w <= 90 ? w : null;
+}
+
+// ── Read inputs ──
+function inp() {
+    const v = id => parseFloat(document.getElementById(id).value) || 0;
+    const recoveryPath = document.querySelector('input[name="recoveryPath"]:checked').value;
+    return {
+        price: v('price'), cogs: v('cogs'),
+        ship: v('shipping'), labor: v('labor'),
+        pack: v('packaging'), salv: v('salvage'),
+        Rinf: v('r_inf') / 100, k: v('k_param'), r14: v('r14') / 100,
+        baseVol: v('baseVol'), retWindow: v('retWindow'),
+        priceElast: v('priceElast'), retElast: v('retElast'),
+        costScale: v('costScale'), salvScale: v('salvScale'),
+        recoveryRate: v('recoveryRate') / 100,
+        refurbCost: v('refurbCost'),
+        salvagePct: v('salvagePct') / 100,
+        recoveryPath,
+    };
+}
+
+function inpB() {
+    const v = id => parseFloat(document.getElementById(id).value) || 0;
+    return { price: v('priceB'), cogs: v('cogsB') };
+}
+
+function calcL(cogs, recoveryRate, refurbCost, salvage, salvagePct, recoveryPath, adjShip, adjLabor, adjPack, adjSalv) {
+    const opsCost = adjShip + adjLabor + adjPack;
+    if (recoveryPath === 'salvage') {
+        return cogs + opsCost - adjSalv;
+    } else if (recoveryPath === 'refurb') {
+        return cogs * (1 - recoveryRate) + opsCost + refurbCost;
+    } else {
+        const refurbPct = 1 - salvagePct;
+        return cogs * (1 - recoveryRate * refurbPct) + opsCost + refurbCost * refurbPct - adjSalv * salvagePct;
+    }
+}
+
+function onRecoveryPathChange() {
+    const path = document.querySelector('input[name="recoveryPath"]:checked').value;
+    document.querySelectorAll('.recovery-path').forEach(el => el.classList.remove('active'));
+    document.getElementById('rp-' + path).classList.add('active');
+    const salvageEl = document.getElementById('salvage');
+    const salvagePctEl = document.getElementById('salvagePct');
+    const recoveryEl = document.getElementById('recoveryRate');
+    const refurbEl = document.getElementById('refurbCost');
+    const descL = document.getElementById('desc-l');
+    if (path === 'salvage') {
+        salvageEl.disabled = false; salvagePctEl.disabled = true;
+        recoveryEl.disabled = true; refurbEl.disabled = true;
+        salvagePctEl.value = 100;
+        descL.textContent = '매출원가 + 운영비 - 잔존가치';
+    } else if (path === 'refurb') {
+        salvageEl.disabled = true; salvagePctEl.disabled = true;
+        recoveryEl.disabled = false; refurbEl.disabled = false;
+        salvagePctEl.value = 0;
+        descL.textContent = '매출원가 × (1-회수율) + 운영비 + 리퍼브비';
+    } else {
+        salvageEl.disabled = false; salvagePctEl.disabled = false;
+        recoveryEl.disabled = false; refurbEl.disabled = false;
+        if (salvagePctEl.value == 0 || salvagePctEl.value == 100) salvagePctEl.value = 50;
+        descL.textContent = '매각/리퍼브 혼합 비율 적용';
+    }
+    calc();
+}
+
+// ── Main calculate ──
+function calc() {
+    const i = inp();
+    const err = document.getElementById('error');
+
+    // Validation
+    if (i.price <= 0) return showErr('판매가를 입력하세요.');
+    if (i.price <= i.cogs) return showErr('판매가가 매출원가보다 커야 합니다.');
+    if (i.r14 >= i.Rinf) return showErr('14일 기준 반품률이 R∞보다 작아야 합니다.');
+    if (i.k <= 0) return showErr('k 파라미터는 0보다 커야 합니다.');
+    err.style.display = 'none';
+
+    const G = i.price - i.cogs;
+    const vol = calcVolume(i);
+    const L = calcL(i.cogs, i.recoveryRate, i.refurbCost, i.salv, i.salvagePct, i.recoveryPath, vol.adjShip, vol.adjLabor, vol.adjPack, vol.adjSalv);
+    const BEP = L <= 0 ? 1 : G / (G + L);
+    const lam = calLam(i.Rinf, i.k, i.r14);
+    if (isNaN(lam)) return showErr('파라미터 조합이 유효하지 않습니다.');
+
+    const marginPct = (G / i.price * 100).toFixed(1);
+    const bd = bepDay(i.Rinf, i.k, lam, BEP);
+
+    // ── Structural deficit warning ──
+    const warn = document.getElementById('warning');
+    if (BEP < i.Rinf) {
+        warn.innerHTML = '<strong>구조적 적자 경고</strong> — BEP 반품률(' + (BEP * 100).toFixed(1) + '%)이 예상 최대 반품률(R∞=' + (i.Rinf * 100).toFixed(0) + '%)보다 낮습니다. 반품 1건의 손실($' + L.toFixed(0) + ')이 판매 ' + (L / G).toFixed(1) + '건의 이익에 해당하여 현실적으로 흑자 달성이 어렵습니다.';
+        warn.style.display = 'block';
+    } else {
+        warn.style.display = 'none';
+    }
+
+    // ── Update display ──
+    document.getElementById('disp-margin').textContent = marginPct + '%';
+    document.getElementById('val-g').textContent = '$' + G.toFixed(0);
+    document.getElementById('val-l').textContent = '$' + L.toFixed(0);
+    document.getElementById('val-bep').textContent = (BEP * 100).toFixed(1) + '%';
+    document.getElementById('desc-lg').textContent = 'L/G = ' + (L / G).toFixed(2);
+
+    // Card colors
+    setCardClass('card-bep', BEP > 0.45 ? 'mc-positive' : BEP > 0.25 ? 'mc-warn' : 'mc-negative');
+
+    // Safety margin
+    const safetyPP = (BEP - i.Rinf) * 100;
+    const smEl = document.getElementById('safety-margin');
+    if (safetyPP >= 20) {
+        smEl.style.color = '#16a34a';
+        smEl.textContent = '안전마진 ' + safetyPP.toFixed(1) + 'pp';
+    } else if (safetyPP >= 10) {
+        smEl.style.color = '#d97706';
+        smEl.textContent = '안전마진 ' + safetyPP.toFixed(1) + 'pp';
+    } else if (safetyPP >= 0) {
+        smEl.style.color = '#dc2626';
+        smEl.textContent = '안전마진 ' + safetyPP.toFixed(1) + 'pp';
+    } else {
+        smEl.style.color = '#dc2626';
+        smEl.textContent = '구조적 적자 ' + safetyPP.toFixed(1) + 'pp';
+    }
+    const rinfPct = Math.min(i.Rinf * 100, 100);
+    const bepPct = Math.min(BEP * 100, 100);
+    document.getElementById('gauge-rinf').style.left = rinfPct + '%';
+    document.getElementById('gauge-bep').style.left = bepPct + '%';
+    document.getElementById('gauge-label-rinf').style.left = rinfPct + '%';
+    document.getElementById('gauge-label-bep').style.left = bepPct + '%';
+    const safeColor = safetyPP >= 20 ? 'rgba(34,197,94,0.15)' : safetyPP >= 10 ? 'rgba(217,119,6,0.15)' : 'rgba(220,38,38,0.15)';
+    const gaugeFill = document.getElementById('gauge-safe-zone');
+    if (BEP > i.Rinf) {
+        gaugeFill.style.left = rinfPct + '%';
+        gaugeFill.style.width = (bepPct - rinfPct) + '%';
+    } else {
+        gaugeFill.style.left = bepPct + '%';
+        gaugeFill.style.width = (rinfPct - bepPct) + '%';
+    }
+    gaugeFill.style.background = safeColor;
+
+    if (bd !== null) {
+        if (bd < 1) {
+            document.getElementById('val-day').textContent = '즉시';
+            document.getElementById('desc-day').textContent = '판매 즉시 반품률이 BEP 초과';
+        } else {
+            document.getElementById('val-day').textContent = bd.toFixed(0) + '일';
+            document.getElementById('desc-day').textContent =
+                bd <= 14 ? '14일 이내 BEP 반품률 도달' : bd <= 30 ? '30일 이내 BEP 반품률 도달' : bd.toFixed(0) + '일 후 BEP 반품률 도달';
+        }
+        setCardClass('card-day', bd <= 30 ? 'mc-negative' : 'mc-warn');
+    } else {
+        document.getElementById('val-day').textContent = '미도달';
+        document.getElementById('desc-day').textContent = '90일 내 BEP 반품률 미도달 (안전)';
+        setCardClass('card-day', 'mc-positive');
+    }
+
+    // ── P&L helpers (defined early for Scenario B access) ──
+    const Rw = wR(i.retWindow, i.Rinf, i.k, lam);
+    const fmtMoney = v => {
+        const abs = Math.abs(v);
+        const str = abs >= 1000 ? '$' + Math.round(abs).toLocaleString() : '$' + abs.toFixed(0);
+        return v < 0 ? '-' + str : str;
+    };
+
+    // ── Chart data ──
+    const days = [], rr = [], pr = [], bepArr = [];
+    for (let d = 0; d <= 90; d++) {
+        days.push(d);
+        const r = wR(d, i.Rinf, i.k, lam);
+        rr.push(+(r * 100).toFixed(2));
+        pr.push(+((1 - r / BEP) * 100).toFixed(2));
+        bepArr.push(+(BEP * 100).toFixed(2));
+    }
+
+    // ── Scenario B ──
+    let scenB = null;
+    if (isCompareMode()) {
+        const ib = inpB();
+        if (ib.price > 0 && ib.price > ib.cogs) {
+            const Gb = ib.price - ib.cogs;
+            const Lb = calcL(ib.cogs, i.recoveryRate, i.refurbCost, i.salv, i.salvagePct, i.recoveryPath, vol.adjShip, vol.adjLabor, vol.adjPack, vol.adjSalv);
+            const BEPb = Lb <= 0 ? 1 : Gb / (Gb + Lb);
+            const bdb = bepDay(i.Rinf, i.k, lam, BEPb);
+            const marginBPct = (Gb / ib.price * 100).toFixed(1);
+            document.getElementById('disp-marginB').textContent = marginBPct + '%';
+
+            const prB = [], bepArrB = [];
+            for (let d = 0; d <= 90; d++) {
+                const r = wR(d, i.Rinf, i.k, lam);
+                prB.push(+((1 - r / BEPb) * 100).toFixed(2));
+                bepArrB.push(+(BEPb * 100).toFixed(2));
+            }
+
+            scenB = { Gb, Lb, BEPb, bdb, prB, bepArrB, marginBPct };
+
+            // Update compare values on cards
+            document.getElementById('cv-g').textContent = 'B: $' + Gb.toFixed(0) + ' (' + marginBPct + '%)';
+            document.getElementById('cv-l').textContent = 'B: $' + Lb.toFixed(0);
+            document.getElementById('cv-bep').textContent = 'B: ' + (BEPb * 100).toFixed(1) + '%';
+            if (bdb !== null) {
+                document.getElementById('cv-day').textContent = 'B: ' + (bdb < 1 ? '즉시' : bdb.toFixed(0) + '일');
+            } else {
+                document.getElementById('cv-day').textContent = 'B: 미도달';
+            }
+
+            // P&L compare
+            const plRevenueB = vol.adjVol * inpB().price;
+            const plReturnCostB = vol.adjVol * Rw * scenB.Lb;
+            const plNetProfitB = vol.adjVol * scenB.Gb * (1 - Rw / scenB.BEPb);
+            const plReturnPctB = plRevenueB > 0 ? (plReturnCostB / plRevenueB * 100) : 0;
+            document.getElementById('pl-cv-revenue').textContent = 'B: ' + fmtMoney(plRevenueB);
+            document.getElementById('pl-cv-return-cost').textContent = 'B: ' + fmtMoney(plReturnCostB);
+            document.getElementById('pl-cv-net-profit').textContent = 'B: ' + (plNetProfitB >= 0 ? '+' : '-') + fmtMoney(Math.abs(plNetProfitB));
+            document.getElementById('pl-cv-return-pct').textContent = 'B: ' + plReturnPctB.toFixed(1) + '%';
+
+            // Build compare table
+            buildCompareTable(i, G, L, BEP, bd, lam, Gb, Lb, BEPb, bdb);
+        }
+    }
+
+    drawReturn(days, rr, bepArr, scenB);
+    drawProfit(days, pr, scenB);
+    drawTable(i.Rinf, i.k, lam, BEP, G, scenB);
+
+    // ── Volume model display ──
+    document.getElementById('disp-retcost').textContent = '$' + L.toFixed(0);
+
+    // ── P&L Impact Panel ──
+    const plRevenue = vol.adjVol * i.price;
+    const plReturnCost = vol.adjVol * Rw * L;
+    const plNetProfit = vol.adjVol * G * (1 - Rw / BEP);
+    const plReturnPct = plRevenue > 0 ? (plReturnCost / plRevenue * 100) : 0;
+
+    document.getElementById('pl-revenue').textContent = fmtMoney(plRevenue);
+    document.getElementById('pl-revenue').setAttribute('data-raw', plRevenue.toFixed(2));
+    document.getElementById('pl-return-cost').textContent = fmtMoney(plReturnCost);
+    document.getElementById('pl-return-cost').setAttribute('data-raw', plReturnCost.toFixed(2));
+    document.getElementById('pl-net-profit').textContent = (plNetProfit >= 0 ? '+' : '-') + fmtMoney(Math.abs(plNetProfit));
+    document.getElementById('pl-net-profit').setAttribute('data-raw', plNetProfit.toFixed(2));
+    document.getElementById('pl-return-pct').textContent = plReturnPct.toFixed(1) + '%';
+
+    const plNetEl = document.getElementById('pl-net-profit').parentElement;
+    plNetEl.className = 'pl-card ' + (plNetProfit >= 0 ? 'pl-positive' : 'pl-negative');
+    const plRetPctEl = document.getElementById('pl-return-pct').parentElement;
+    plRetPctEl.className = 'pl-card ' + (plReturnPct > 15 ? 'pl-negative' : '');
+
+    const baseVol = i.baseVol > 0 ? i.baseVol : 1000;
+    const volPct = ((vol.adjVol - baseVol) / baseVol * 100);
+    let volText = Math.round(vol.adjVol).toLocaleString() + ' 개/월';
+    if (Math.abs(volPct) >= 0.5) {
+        volText += ' (' + (volPct > 0 ? '▲' : '▼') + Math.abs(volPct).toFixed(0) + '%)';
+    }
+    document.getElementById('cg-vol').textContent = volText;
+    document.getElementById('cg-cost').textContent = '$' + (vol.adjShip + vol.adjLabor + vol.adjPack).toFixed(2);
+    document.getElementById('cg-salv').textContent = '$' + vol.adjSalv.toFixed(2);
+    drawVolume(i, vol, isCompareMode() ? inpB() : null);
+}
+
+function buildCompareTable(i, G, L, BEP, bd, lam, Gb, Lb, BEPb, bdb) {
+    const tb = document.getElementById('ctbody');
+    const r30 = wR(30, i.Rinf, i.k, lam);
+    const piGA = (1 - r30 / BEP) * 100;
+    const piGB = (1 - r30 / BEPb) * 100;
+    const piUnitA = G * (1 - r30 / BEP);
+    const piUnitB = Gb * (1 - r30 / BEPb);
+
+    const rows = [
+        {
+            label: '매출총이익 (G)',
+            a: '$' + G.toFixed(0) + ' (' + (G / i.price * 100).toFixed(1) + '%)',
+            b: '$' + Gb.toFixed(0) + ' (' + (Gb / inpB().price * 100).toFixed(1) + '%)',
+            diff: (Gb - G) >= 0 ? '+$' + (Gb - G).toFixed(0) : '-$' + Math.abs(Gb - G).toFixed(0),
+            positive: (Gb - G) >= 0,
+        },
+        {
+            label: '반품 손실 (L)',
+            a: '$' + L.toFixed(0),
+            b: '$' + Lb.toFixed(0),
+            diff: (Lb - L) >= 0 ? '+$' + (Lb - L).toFixed(0) : '-$' + Math.abs(Lb - L).toFixed(0),
+            positive: (Lb - L) <= 0,
+        },
+        {
+            label: 'BEP 반품률',
+            a: (BEP * 100).toFixed(1) + '%',
+            b: (BEPb * 100).toFixed(1) + '%',
+            diff: ((BEPb - BEP) * 100 >= 0 ? '+' : '') + ((BEPb - BEP) * 100).toFixed(1) + 'pp',
+            positive: (BEPb - BEP) >= 0,
+        },
+        {
+            label: 'BEP 반품률 도달일',
+            a: bd === null ? '미도달 (안전)' : (bd < 1 ? '즉시' : bd.toFixed(0) + '일'),
+            b: bdb === null ? '미도달 (안전)' : (bdb < 1 ? '즉시' : bdb.toFixed(0) + '일'),
+            diff: '—',
+            positive: null,
+        },
+        {
+            label: '30일 반품률',
+            a: (r30 * 100).toFixed(1) + '%',
+            b: (r30 * 100).toFixed(1) + '%',
+            diff: '동일',
+            positive: null,
+        },
+        {
+            label: '30일 π/G',
+            a: (piGA >= 0 ? '+' : '') + piGA.toFixed(1) + '%',
+            b: (piGB >= 0 ? '+' : '') + piGB.toFixed(1) + '%',
+            diff: ((piGB - piGA) >= 0 ? '+' : '') + (piGB - piGA).toFixed(1) + 'pp',
+            positive: (piGB - piGA) >= 0,
+        },
+        {
+            label: '30일 건당이익',
+            a: (piUnitA >= 0 ? '+' : '') + '$' + Math.abs(piUnitA).toFixed(0),
+            b: (piUnitB >= 0 ? '+' : '-') + '$' + Math.abs(piUnitB).toFixed(0),
+            diff: ((piUnitB - piUnitA) >= 0 ? '+' : '-') + '$' + Math.abs(piUnitB - piUnitA).toFixed(0),
+            positive: (piUnitB - piUnitA) >= 0,
+        },
+    ];
+
+    tb.innerHTML = '';
+    rows.forEach(r => {
+        const tr = document.createElement('tr');
+        const diffCls = r.positive === null ? '' : r.positive ? 'col-diff-pos' : 'col-diff-neg';
+        tr.innerHTML = `<td><strong>${r.label}</strong></td><td class="col-a">${r.a}</td><td class="col-b">${r.b}</td><td class="${diffCls}">${r.diff}</td>`;
+        tb.appendChild(tr);
+    });
+}
+
+function showErr(msg) {
+    const el = document.getElementById('error');
+    el.textContent = msg;
+    el.style.display = 'block';
+}
+
+function setCardClass(id, cls) {
+    const el = document.getElementById(id);
+    el.className = 'metric-card ' + cls;
+}
+
+// ── Return chart ──
+function drawReturn(labels, data, bepData, scenB) {
+    const datasets = [
+        {
+            label: '누적 반품률',
+            data, borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.06)',
+            fill: true, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+        },
+        {
+            label: 'BEP 반품률 (A)',
+            data: bepData, borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.06)',
+            borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0,
+            fill: { target: 'origin' },
+        },
+    ];
+    if (scenB) {
+        datasets.push({
+            label: 'BEP 반품률 (B)',
+            data: scenB.bepArrB, borderColor: '#ea580c',
+            backgroundColor: 'rgba(234,88,12,0.04)',
+            borderWidth: 1.5, borderDash: [3, 3], pointRadius: 0,
+            fill: false,
+        });
+    }
+
+    if (chReturn) {
+        chReturn.data.labels = labels;
+        chReturn.data.datasets = datasets;
+        chReturn.update('none');
+        return;
+    }
+    chReturn = new Chart(document.getElementById('chartReturn'), {
+        type: 'line',
+        plugins: [vLinePlugin, bepLabelPlugin],
+        data: { labels, datasets },
+        options: chartOpts('누적 반품률 (%)', v => v + '%', true),
+    });
+}
+
+// ── Profit chart ──
+function drawProfit(labels, data, scenB) {
+    const datasets = [{
+        label: 'π/G 수익률 (A)',
+        data, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+        fill: { target: 'origin', above: 'rgba(34,197,94,0.10)', below: 'rgba(239,68,68,0.10)' },
+        segment: {
+            borderColor: function(ctx) {
+                const y0 = ctx.p0.parsed.y, y1 = ctx.p1.parsed.y;
+                if (y0 >= 0 && y1 >= 0) return '#22c55e';
+                if (y0 < 0 && y1 < 0) return '#ef4444';
+                return '#94a3b8';
+            },
+        },
+    }];
+    if (scenB) {
+        datasets.push({
+            label: 'π/G 수익률 (B)',
+            data: scenB.prB, borderColor: '#ea580c',
+            borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.3,
+            fill: false,
+        });
+    }
+
+    if (chProfit) {
+        chProfit.data.labels = labels;
+        chProfit.data.datasets = datasets;
+        chProfit.update('none');
+        return;
+    }
+    chProfit = new Chart(document.getElementById('chartProfit'), {
+        type: 'line',
+        plugins: [vLinePlugin],
+        data: { labels, datasets },
+        options: chartOpts('수익률 π/G (%)', v => (v >= 0 ? '+' : '') + v + '%', scenB ? true : false),
+    });
+}
+
+// ── Volume marker plugin ──
+const volumeMarkerPlugin = {
+    id: 'volumeMarker',
+    afterDraw(chart) {
+        const meta = chart._volumeMarkerDay;
+        if (meta === undefined) return;
+        const xAxis = chart.scales.x;
+        const yAxis = chart.scales.y;
+        const x = xAxis.getPixelForValue(meta);
+        if (x < xAxis.left || x > xAxis.right) return;
+        const ctx = chart.ctx;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(x, yAxis.top);
+        ctx.lineTo(x, yAxis.bottom);
+        ctx.strokeStyle = '#8b5cf6';
+        ctx.setLineDash([5, 4]);
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.fillStyle = '#8b5cf6';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('현재 ' + meta + '일', x, yAxis.top - 5);
+        ctx.restore();
+    }
+};
+
+// ── Volume chart ──
+function drawVolume(inp, vol, scenBInput) {
+    const windowDays = [];
+    const adjVolData = [];
+    const baseVolData = [];
+    const baseVol = inp.baseVol > 0 ? inp.baseVol : 1000;
+    const adjVolDataB = [];
+    for (let d = 7; d <= 90; d++) {
+        windowDays.push(d);
+        const wRatio = Math.pow(d / REF_WINDOW, inp.retElast);
+        const pRatio = inp.price > 0 ? Math.pow(inp.price / REF_PRICE, inp.priceElast) : 1;
+        adjVolData.push(+(baseVol * pRatio * wRatio).toFixed(0));
+        baseVolData.push(baseVol);
+        if (scenBInput && scenBInput.price > 0) {
+            const pRatioB = Math.pow(scenBInput.price / REF_PRICE, inp.priceElast);
+            adjVolDataB.push(+(baseVol * pRatioB * wRatio).toFixed(0));
+        }
+    }
+    const datasets = [
+        {
+            label: '예상 판매량 (A)',
+            data: adjVolData,
+            borderColor: '#8b5cf6',
+            backgroundColor: 'rgba(139,92,246,0.08)',
+            fill: true, borderWidth: 2.5, pointRadius: 0, tension: 0.3,
+        },
+        {
+            label: '기준 판매량',
+            data: baseVolData,
+            borderColor: '#94a3b8',
+            borderWidth: 1.5, borderDash: [6, 4], pointRadius: 0,
+        },
+    ];
+    if (scenBInput && adjVolDataB.length) {
+        datasets.push({
+            label: '예상 판매량 (B)',
+            data: adjVolDataB,
+            borderColor: '#ea580c',
+            borderWidth: 2, borderDash: [6, 4], pointRadius: 0, tension: 0.3,
+            fill: false,
+        });
+    }
+    if (chVolume) {
+        chVolume.data.labels = windowDays;
+        chVolume.data.datasets = datasets;
+        chVolume._volumeMarkerDay = inp.retWindow;
+        chVolume.update('none');
+        return;
+    }
+    chVolume = new Chart(document.getElementById('chartVolume'), {
+        type: 'line',
+        plugins: [volumeMarkerPlugin],
+        data: { labels: windowDays, datasets },
+        options: chartOpts('판매량 (개/월)', v => v.toLocaleString(), true, '반품허용기간 (일)', c => {
+            return c.dataset.label + ': ' + Math.round(c.parsed.y).toLocaleString() + ' 개/월';
+        }),
+    });
+    chVolume._volumeMarkerDay = inp.retWindow;
+}
+
+function chartOpts(yTitle, tickCb, showLegend, xTitle, tooltipLabelCb) {
+    return {
+        responsive: true, maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+            legend: { display: showLegend, position: 'top', labels: { boxWidth: 14, font: { size: 11 } } },
+            tooltip: {
+                callbacks: {
+                    title: c => c[0].label + '일',
+                    label: tooltipLabelCb || (c => {
+                        const v = c.parsed.y;
+                        return c.dataset.label + ': ' + (v >= 0 && !c.dataset.label.includes('BEP') ? '+' : '') + v.toFixed(1) + '%';
+                    }),
+                },
+            },
+        },
+        scales: {
+            x: { title: { display: true, text: xTitle || '반품기간 (일)', font: { size: 11 } }, ticks: { stepSize: 10 } },
+            y: { title: { display: true, text: yTitle, font: { size: 11 } }, ticks: { callback: tickCb } },
+        },
+    };
+}
+
+// ── Summary table ──
+function drawTable(Rinf, k, lam, BEP, G, scenB) {
+    const periods = [7, 14, 21, 30, 45, 60, 90];
+    const r14val = wR(14, Rinf, k, lam);
+    const tb = document.getElementById('tbody');
+    const th = document.getElementById('thead');
+    tb.innerHTML = '';
+
+    if (isCompareMode() && scenB) {
+        th.innerHTML = `
+            <tr>
+                <th rowspan="2" style="vertical-align:bottom">반품기간</th>
+                <th rowspan="2" style="vertical-align:bottom">반품률</th>
+                <th colspan="2" style="text-align:center;background:#eff6ff;color:#3b82f6;border-bottom:1px solid #bfdbfe">시나리오 A</th>
+                <th colspan="2" style="text-align:center;background:#fff7ed;color:#ea580c;border-bottom:1px solid #fed7aa">시나리오 B</th>
+            </tr>
+            <tr>
+                <th style="background:#eff6ff">&pi;/G</th>
+                <th style="background:#eff6ff">건당이익</th>
+                <th style="background:#fff7ed">&pi;/G</th>
+                <th style="background:#fff7ed">건당이익</th>
+            </tr>`;
+        periods.forEach(d => {
+            const r = wR(d, Rinf, k, lam);
+            const piGA = (1 - r / BEP) * 100;
+            const piUnitA = G * (1 - r / BEP);
+            const piGB = (1 - r / scenB.BEPb) * 100;
+            const piUnitB = scenB.Gb * (1 - r / scenB.BEPb);
+            const clsA = piGA > 2 ? 'pos' : piGA < -2 ? 'neg' : '';
+            const clsB = piGB > 2 ? 'pos' : piGB < -2 ? 'neg' : '';
+            const isBep = Math.abs(piGA) <= 2 || Math.abs(piGB) <= 2;
+            const tr = document.createElement('tr');
+            if (isBep) tr.className = 'bep-row';
+            tr.innerHTML = `
+                <td><strong>${d}일</strong></td>
+                <td>${(r * 100).toFixed(1)}%</td>
+                <td class="${clsA}">${piGA >= 0 ? '+' : ''}${piGA.toFixed(1)}%</td>
+                <td class="${clsA}">$${piUnitA.toFixed(0)}</td>
+                <td class="${clsB}">${piGB >= 0 ? '+' : ''}${piGB.toFixed(1)}%</td>
+                <td class="${clsB}">$${piUnitB.toFixed(0)}</td>`;
+            tb.appendChild(tr);
+        });
+    } else {
+        th.innerHTML = `<tr>
+            <th>반품기간</th><th>누적 반품률</th>
+            <th>&Delta;r (vs 14일)</th><th>&pi;/G 수익률</th>
+            <th>건당 순이익</th><th>상태</th>
+        </tr>`;
+        periods.forEach(d => {
+            const r = wR(d, Rinf, k, lam);
+            const delta = r - r14val;
+            const piG = (1 - r / BEP) * 100;
+            const piUnit = G * (1 - r / BEP);
+            const cls = piG > 2 ? 'pos' : piG < -2 ? 'neg' : '';
+            const status = piG > 2 ? '흑자' : piG < -2 ? '적자' : 'BEP 근접';
+            const isBep = Math.abs(piG) <= 2;
+            const tr = document.createElement('tr');
+            if (isBep) tr.className = 'bep-row';
+            tr.innerHTML = `
+                <td><strong>${d}일</strong></td>
+                <td>${(r * 100).toFixed(1)}%</td>
+                <td>${d === 14 ? '-' : (delta >= 0 ? '+' : '') + (delta * 100).toFixed(1) + 'pp'}</td>
+                <td class="${cls}">${piG >= 0 ? '+' : ''}${piG.toFixed(1)}%</td>
+                <td class="${cls}">$${piUnit.toFixed(0)}</td>
+                <td>${status}</td>`;
+            tb.appendChild(tr);
+        });
+    }
+}
+
+// ── Preset handlers ──
+function applyMargin(type) {
+    const p = MARGIN[type];
+    document.getElementById('price').value = p.price;
+    document.getElementById('cogs').value = p.cogs;
+    document.querySelectorAll('#presetsA button').forEach(b => b.classList.remove('active'));
+    document.getElementById('pm-' + type).classList.add('active');
+    calc();
+}
+
+function applyMarginB(type) {
+    const p = MARGIN[type];
+    document.getElementById('priceB').value = p.price;
+    document.getElementById('cogsB').value = p.cogs;
+    document.querySelectorAll('#sectionB .presets button').forEach(b => b.classList.remove('active'));
+    document.getElementById('pmb-' + type).classList.add('active');
+    calc();
+}
+
+function onCatChange() {
+    const v = document.getElementById('category').value;
+    if (v !== 'custom' && CAT[v]) {
+        document.getElementById('r_inf').value = CAT[v].r_inf;
+        document.getElementById('k_param').value = CAT[v].k;
+    }
+    calc();
+}
+
+// ── Tooltip positioning ──
+document.querySelectorAll('.has-tip').forEach(el => {
+    const tip = el.querySelector('.tip-box');
+    if (!tip) return;
+    el.addEventListener('mouseenter', () => {
+        tip.style.left = '-9999px';
+        tip.style.top = '0';
+        tip.classList.add('show');
+        tip.classList.remove('tip-flip');
+        const tipH = tip.offsetHeight;
+        const rect = el.getBoundingClientRect();
+        let top = rect.top - tipH - 8;
+        if (top < 4) {
+            top = rect.bottom + 8;
+            tip.classList.add('tip-flip');
+        }
+        tip.style.left = Math.max(4, rect.left) + 'px';
+        tip.style.top = top + 'px';
+    });
+    el.addEventListener('mouseleave', () => {
+        tip.classList.remove('show');
+    });
+});
+
+// ── Modal close ──
+document.getElementById('helpModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('open');
+});
+
+// Init
+document.addEventListener('DOMContentLoaded', calc);
+</script>
+</body>
+</html>
