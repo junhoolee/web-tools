@@ -135,6 +135,9 @@ export interface SimulatorDerived {
   // Tornado
   tornadoResults: TornadoResult[];
 
+  // Fixed cost BEP volume
+  bepVolume?: number;
+
   // Errors
   error: string | null;
   warning: string | null;

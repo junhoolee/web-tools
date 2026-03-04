@@ -262,6 +262,11 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
   // Tornado
   const tornadoResults = calcSensitivity(i, i.tornadoPct);
 
+  // Fixed cost BEP volume
+  const bepVolume = i.fixedCost > 0 && contribPerUnit > 0
+    ? i.fixedCost / contribPerUnit
+    : undefined;
+
   const scenario: ScenarioResult = {
     G, L, BEP, bd, lam, Rw, marginPct, vol, contribPerUnit, reasonBreakdown,
   };
@@ -280,6 +285,7 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
     plReturnPct,
     safetyPP,
     tornadoResults,
+    bepVolume,
     error: null,
     warning,
   };

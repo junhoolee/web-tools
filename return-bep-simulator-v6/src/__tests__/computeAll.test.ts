@@ -14,7 +14,7 @@ import { describe, it, expect } from 'vitest';
 // Alternative: test the hook behavior by manually creating the test scenarios.
 
 // Let's test by importing the lib functions and simulating computeAll logic:
-import { calLam, wR, bepDay } from '../lib/weibull';
+import { calLam, wR } from '../lib/weibull';
 import { calcL } from '../lib/cost';
 import { calcVolume } from '../lib/volume';
 import type { SimulatorInputs } from '../types/simulator';
@@ -93,7 +93,6 @@ describe('computeAll boundary cases (via lib functions)', () => {
   it('structural deficit: BEP < Rinf when L is very high', () => {
     const i = validInputs;
     const G = i.price - i.cogs; // 121
-    const vol = calcVolume(i);
     // With very high costs, L >> G → BEP approaches 0
     const L = calcL(i.cogs, 0, 100, i.salv, 1.0, 'salvage',
       100, 100, 100, 0, 0);
