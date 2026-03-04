@@ -169,11 +169,29 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
   if (i.price <= i.cogs) {
     return emptyDerived('판매가가 매출원가보다 커야 합니다.');
   }
+  if (i.Rinf <= 0 || i.Rinf > 1) {
+    return emptyDerived('R∞(최대 반품률)는 0 초과 1 이하여야 합니다.');
+  }
+  if (i.r14 <= 0 || i.r14 >= 1) {
+    return emptyDerived('14일 반품률은 0 초과 1 미만이어야 합니다.');
+  }
   if (i.r14 >= i.Rinf) {
-    return emptyDerived('14일 기준 반품률이 R\u221E보다 작아야 합니다.');
+    return emptyDerived('14일 기준 반품률이 R∞보다 작아야 합니다.');
   }
   if (i.k <= 0) {
     return emptyDerived('k 파라미터는 0보다 커야 합니다.');
+  }
+  if (i.retWindow <= 0) {
+    return emptyDerived('반품 윈도우는 0보다 커야 합니다.');
+  }
+  if (i.baseVol <= 0) {
+    return emptyDerived('기본 판매량은 0보다 커야 합니다.');
+  }
+  if (i.recoveryRate < 0 || i.recoveryRate > 1) {
+    return emptyDerived('회수율은 0~1 범위여야 합니다.');
+  }
+  if (i.compareOn && i.priceB > 0 && i.priceB <= i.cogsB) {
+    return emptyDerived('B 시나리오: 판매가가 매출원가보다 커야 합니다.');
   }
 
   const G = i.price - i.cogs;
