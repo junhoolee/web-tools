@@ -6,7 +6,7 @@ import ReturnRecoverySection from '../sidebar/ReturnRecoverySection';
 import ReasonSegmentation from '../sidebar/ReasonSegmentation';
 import WeibullSection from '../sidebar/WeibullSection';
 import VolumeSection from '../sidebar/VolumeSection';
-import FixedCostSection from '../sidebar/FixedCostSection';
+
 import FormulaReference from '../sidebar/FormulaReference';
 
 interface Props {
@@ -54,7 +54,6 @@ export default function Sidebar({ inputs, dispatch, derived, onHelpOpen, onTorna
 
       <WeibullSection inputs={inputs} dispatch={dispatch} />
       <VolumeSection inputs={inputs} dispatch={dispatch} vol={scenario.vol} />
-      <FixedCostSection inputs={inputs} dispatch={dispatch} contribPerUnit={scenario.contribPerUnit} bepVol={derived.bepVolume ?? null} />
       <FormulaReference />
     </div>
   );
