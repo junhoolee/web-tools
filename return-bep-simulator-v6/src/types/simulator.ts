@@ -115,6 +115,7 @@ export interface TornadoResult {
 export interface SimulatorDerived {
   scenario: ScenarioResult;
   scenarioB: ScenarioBResult | null;
+  volB?: VolumeResult;
 
   // Chart data arrays (0..90 days)
   days: number[];

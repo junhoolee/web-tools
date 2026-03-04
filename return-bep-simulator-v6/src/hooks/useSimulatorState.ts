@@ -5,6 +5,7 @@ import type {
   SimulatorAction,
   ScenarioResult,
   ScenarioBResult,
+  VolumeResult,
 } from '../types/simulator';
 import { CAT, MARGIN } from '../constants/presets';
 import { wR, calLam, bepDay } from '../lib/weibull';
@@ -219,9 +220,11 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
 
   // Scenario B
   let scenarioB: ScenarioBResult | null = null;
+  let volB: VolumeResult | undefined;
   if (i.compareOn && i.priceB > 0 && i.priceB > i.cogsB) {
+    volB = calcVolume({ ...i, price: i.priceB });
     const Gb = i.priceB - i.cogsB;
-    const { L: Lb } = computeScenarioL(i, i.cogsB, vol.adjShip, vol.adjLabor, vol.adjPack, vol.adjSalv, i.cxv);
+    const { L: Lb } = computeScenarioL(i, i.cogsB, volB.adjShip, volB.adjLabor, volB.adjPack, volB.adjSalv, i.cxv);
     const BEPb = Lb <= 0 ? 1 : Gb / (Gb + Lb);
     const bdb = bepDay(i.Rinf, i.k, lam, BEPb);
     const marginBPct = (Gb / i.priceB * 100).toFixed(1);
@@ -248,6 +251,7 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
   return {
     scenario,
     scenarioB,
+    volB,
     days,
     rr,
     pr,
