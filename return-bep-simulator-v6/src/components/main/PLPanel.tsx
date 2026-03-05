@@ -1,21 +1,12 @@
-import type { SimulatorDerived, SimulatorInputs } from '../../types/simulator';
+import type { SimulatorDerived } from '../../types/simulator';
 import { fmtMoney } from '../../lib/formatters';
 
 interface Props {
-  inputs: SimulatorInputs;
   derived: SimulatorDerived;
 }
 
-export default function PLPanel({ inputs, derived }: Props) {
-  const { plRevenue, plReturnCost, plNetProfit, plReturnPct, scenarioB, scenario, volB } = derived;
-  // Scenario B P&L — use independent volB when available
-  let plBRevenue = 0, plBReturnCost = 0, plBNetProfit = 0, plBReturnPct = 0;
-  if (scenarioB && volB) {
-    plBRevenue = volB.adjVol * inputs.priceB;
-    plBReturnCost = volB.adjVol * scenario.Rw * scenarioB.Lb;
-    plBNetProfit = volB.adjVol * scenarioB.contribPerUnitB;
-    plBReturnPct = plBRevenue > 0 ? (plBReturnCost / plBRevenue * 100) : 0;
-  }
+export default function PLPanel({ derived }: Props) {
+  const { plRevenue, plReturnCost, plNetProfit, plReturnPct, scenarioB, plBRevenue, plBReturnCost, plBNetProfit, plBReturnPct } = derived;
 
   return (
     <div className="grid grid-cols-4 gap-3 mb-5 p-4 bg-gradient-to-br from-[#f0f9ff] to-white border border-[#bfdbfe] rounded-[10px] max-desktop:grid-cols-2">

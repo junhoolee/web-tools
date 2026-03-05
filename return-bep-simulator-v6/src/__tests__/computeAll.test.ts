@@ -1,22 +1,5 @@
 import { describe, it, expect } from 'vitest';
-
-// We need to test computeAll which is not directly exported.
-// Instead, we test through the hook's exported interface by importing the module
-// and calling the internal function via a workaround.
-// Since computeAll is not exported, we test boundary behavior through
-// the useSimulatorState hook indirectly via a direct import trick.
-
-// Actually, let's test the validation logic by importing and calling the function.
-// We'll need to export computeAll for testing or use a different approach.
-// For now, let's test the validation logic by checking the derived output.
-
-// We can test computeAll by importing it if we re-export it for testing.
-// Alternative: test the hook behavior by manually creating the test scenarios.
-
-// Let's test by importing the lib functions and simulating computeAll logic:
-import { calLam, wR } from '../lib/weibull';
-import { calcL } from '../lib/cost';
-import { calcVolume } from '../lib/volume';
+import { computeAll, emptyDerived } from '../hooks/useSimulatorState';
 import type { SimulatorInputs } from '../types/simulator';
 
 const validInputs: SimulatorInputs = {
@@ -65,58 +48,192 @@ const validInputs: SimulatorInputs = {
   category: 'hybrid',
 };
 
-describe('computeAll boundary cases (via lib functions)', () => {
-  it('standard inputs produce valid BEP in (0,1)', () => {
-    const i = validInputs;
-    const G = i.price - i.cogs;
-    const vol = calcVolume(i);
-    const L = calcL(i.cogs, i.recoveryRate, i.refurbCost, i.salv, i.salvagePct, i.recoveryPath,
-      vol.adjShip, vol.adjLabor, vol.adjPack, vol.adjSalv, i.cxv);
-    const BEP = L <= 0 ? 1 : G / (G + L);
-    expect(BEP).toBeGreaterThan(0);
-    expect(BEP).toBeLessThan(1);
+function expectValidationError(d: ReturnType<typeof computeAll>, msg: string) {
+  expect(d.error).toBe(msg);
+  expect(d.scenario.G).toBe(0);
+  expect(d.scenario.BEP).toBe(0);
+}
+
+describe('emptyDerived', () => {
+  it('returns error message with zeroed fields', () => {
+    const d = emptyDerived('test error');
+    expect(d.error).toBe('test error');
+    expect(d.scenario.G).toBe(0);
+    expect(d.scenario.BEP).toBe(0);
+    expect(d.plRevenue).toBe(0);
+    expect(d.warning).toBeNull();
+  });
+});
+
+describe('computeAll validation (AC-2.3)', () => {
+  it('#1 rejects price <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, price: 0 }),
+      '판매가를 입력하세요.',
+    );
   });
 
-  it('calLam returns NaN when r14 >= Rinf', () => {
-    expect(isNaN(calLam(0.20, 1.3, 0.20))).toBe(true);
-    expect(isNaN(calLam(0.20, 1.3, 0.25))).toBe(true);
+  it('#2 rejects price <= cogs', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, price: 429 }),
+      '판매가가 매출원가보다 커야 합니다.',
+    );
   });
 
-  it('BEP = 1 when L = 0 (no return loss)', () => {
-    const G = 100;
-    const L = 0;
-    const BEP = L <= 0 ? 1 : G / (G + L);
-    expect(BEP).toBe(1);
+  it('#3 rejects Rinf <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, Rinf: 0 }),
+      'R∞(최대 반품률)는 0 초과 1 이하여야 합니다.',
+    );
   });
 
-  it('structural deficit: BEP < Rinf when L is very high', () => {
-    const i = validInputs;
-    const G = i.price - i.cogs; // 121
-    // With very high costs, L >> G → BEP approaches 0
-    const L = calcL(i.cogs, 0, 100, i.salv, 1.0, 'salvage',
-      100, 100, 100, 0, 0);
-    const BEP = L <= 0 ? 1 : G / (G + L);
-    expect(BEP).toBeLessThan(i.Rinf);
+  it('#4 rejects Rinf > 1', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, Rinf: 1.1 }),
+      'R∞(최대 반품률)는 0 초과 1 이하여야 합니다.',
+    );
   });
 
-  it('window return rate at retWindow should be meaningful', () => {
-    const lam = calLam(0.25, 1.3, 0.20);
-    const Rw = wR(30, 0.25, 1.3, lam);
-    expect(Rw).toBeGreaterThan(0);
-    expect(Rw).toBeLessThan(0.25);
+  it('#5 rejects r14 <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, r14: 0 }),
+      '14일 반품률은 0 초과 1 미만이어야 합니다.',
+    );
   });
 
-  it('contribPerUnit positive for high-margin scenario', () => {
-    // Use high-margin inputs (cogs=220) where BEP > Rinf → healthy profit
-    const i = { ...validInputs, cogs: 220 };
-    const G = i.price - i.cogs; // 330
-    const vol = calcVolume(i);
-    const L = calcL(i.cogs, i.recoveryRate, i.refurbCost, i.salv, i.salvagePct, i.recoveryPath,
-      vol.adjShip, vol.adjLabor, vol.adjPack, vol.adjSalv, i.cxv);
-    const BEP = G / (G + L);
-    const lam = calLam(i.Rinf, i.k, i.r14);
-    const Rw = wR(i.retWindow, i.Rinf, i.k, lam);
-    const contribPerUnit = G * (1 - Rw / BEP);
-    expect(contribPerUnit).toBeGreaterThan(0);
+  it('#6 rejects r14 >= 1', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, r14: 1 }),
+      '14일 반품률은 0 초과 1 미만이어야 합니다.',
+    );
+  });
+
+  it('#7 rejects r14 >= Rinf', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, r14: 0.25, Rinf: 0.25 }),
+      '14일 기준 반품률이 R∞보다 작아야 합니다.',
+    );
+  });
+
+  it('#8 rejects k <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, k: 0 }),
+      'k 파라미터는 0보다 커야 합니다.',
+    );
+  });
+
+  it('#9 rejects retWindow <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, retWindow: 0 }),
+      '반품 윈도우는 0보다 커야 합니다.',
+    );
+  });
+
+  it('#10 rejects baseVol <= 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, baseVol: 0 }),
+      '기본 판매량은 0보다 커야 합니다.',
+    );
+  });
+
+  it('#11 rejects recoveryRate < 0', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, recoveryRate: -0.1 }),
+      '회수율은 0~1 범위여야 합니다.',
+    );
+  });
+
+  it('#12 rejects recoveryRate > 1', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, recoveryRate: 1.5 }),
+      '회수율은 0~1 범위여야 합니다.',
+    );
+  });
+
+  it('#13 rejects Scenario B when priceB <= cogsB', () => {
+    expectValidationError(
+      computeAll({ ...validInputs, compareOn: true, priceB: 400, cogsB: 429 }),
+      'B 시나리오: 판매가가 매출원가보다 커야 합니다.',
+    );
+  });
+});
+
+describe('computeAll normal calculation (AC-2.4)', () => {
+  it('returns exact G, marginPct, and valid BEP/L/bd/lam', () => {
+    const d = computeAll(validInputs);
+    expect(d.error).toBeNull();
+    expect(d.scenario.G).toBe(121);
+    expect(d.scenario.marginPct).toBe('22.0');
+    expect(d.scenario.L).toBeGreaterThan(0);
+    expect(d.scenario.BEP).toBeGreaterThan(0);
+    expect(d.scenario.BEP).toBeLessThan(1);
+    expect(d.scenario.bd).not.toBeNull();
+    expect(d.scenario.lam).toBeGreaterThan(0);
+  });
+
+  it('produces 91 data points for chart arrays', () => {
+    const d = computeAll(validInputs);
+    expect(d.days).toHaveLength(91);
+    expect(d.rr).toHaveLength(91);
+    expect(d.pr).toHaveLength(91);
+    expect(d.bepArr).toHaveLength(91);
+  });
+
+  it('computes contribPerUnit as number', () => {
+    const d = computeAll(validInputs);
+    expect(typeof d.scenario.contribPerUnit).toBe('number');
+    expect(isNaN(d.scenario.contribPerUnit)).toBe(false);
+  });
+});
+
+describe('computeAll P&L (AC-2.5)', () => {
+  it('computes revenue, returnCost, netProfit, returnPct', () => {
+    const d = computeAll(validInputs);
+    expect(d.plRevenue).toBeGreaterThan(0);
+    expect(d.plReturnCost).toBeGreaterThan(0);
+    expect(isNaN(d.plNetProfit)).toBe(false);
+    expect(d.plReturnPct).toBeGreaterThan(0);
+  });
+
+  it('plRevenue equals adjVol * price', () => {
+    const d = computeAll(validInputs);
+    expect(d.plRevenue).toBeCloseTo(d.scenario.vol.adjVol * validInputs.price, 2);
+  });
+});
+
+describe('computeAll Scenario B (AC-2.6)', () => {
+  it('returns null scenarioB when compareOn is false', () => {
+    const d = computeAll(validInputs);
+    expect(d.scenarioB).toBeNull();
+    expect(d.volB).toBeUndefined();
+  });
+
+  it('computes scenarioB with Gb=171 when priceB=600, cogsB=429', () => {
+    const d = computeAll({ ...validInputs, compareOn: true, priceB: 600, cogsB: 429 });
+    expect(d.error).toBeNull();
+    expect(d.scenarioB).not.toBeNull();
+    expect(d.scenarioB!.Gb).toBe(171);
+    expect(d.scenarioB!.BEPb).toBeGreaterThan(0);
+    expect(d.scenarioB!.BEPb).toBeLessThan(1);
+    expect(typeof d.scenarioB!.contribPerUnitB).toBe('number');
+    expect(d.volB).toBeDefined();
+    expect(d.volB!.adjVol).toBeGreaterThan(0);
+  });
+});
+
+describe('computeAll warning (AC-2.7)', () => {
+  it('warns when BEP < Rinf (structural deficit)', () => {
+    const d = computeAll({ ...validInputs, price: 450, cogs: 449 });
+    expect(d.error).toBeNull();
+    expect(d.warning).not.toBeNull();
+    expect(d.warning).toContain('구조적 적자 경고');
+    expect(d.warning).toContain('BEP 반품률');
+    expect(d.warning).toContain('R∞');
+  });
+
+  it('no warning when BEP >= Rinf', () => {
+    const d = computeAll({ ...validInputs, cogs: 220 });
+    expect(d.error).toBeNull();
+    expect(d.warning).toBeNull();
   });
 });

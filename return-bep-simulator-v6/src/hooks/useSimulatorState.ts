@@ -9,7 +9,7 @@ import type {
 } from '../types/simulator';
 import { CAT, MARGIN } from '../constants/presets';
 import { wR, calLam, bepDay } from '../lib/weibull';
-import { calcL, calcWeightedL } from '../lib/cost';
+import { calcL, calcWeightedL, getReasonMultipliers } from '../lib/cost';
 import { calcVolume } from '../lib/volume';
 import { calcSensitivity } from '../lib/sensitivity';
 
@@ -122,13 +122,6 @@ function reducer(state: SimulatorInputs, action: SimulatorAction): SimulatorInpu
   }
 }
 
-function getReasonMultipliers(i: SimulatorInputs) {
-  return {
-    defect: { ship: i.rmShipDefect, pack: i.rmPackDefect, salv: i.rmSalvDefect, recov: i.rmRecovDefect },
-    mind: { ship: i.rmShipMind, pack: i.rmPackMind, salv: i.rmSalvMind, recov: i.rmRecovMind },
-    damage: { ship: i.rmShipDamage, pack: i.rmPackDamage, salv: i.rmSalvDamage, recov: i.rmRecovDamage },
-  };
-}
 
 function computeScenarioL(
   i: SimulatorInputs,
@@ -159,7 +152,7 @@ function computeScenarioL(
   };
 }
 
-function computeAll(i: SimulatorInputs): SimulatorDerived {
+export function computeAll(i: SimulatorInputs): SimulatorDerived {
   // Validation
   if (i.price <= 0) {
     return emptyDerived('판매가를 입력하세요.');
@@ -257,6 +250,16 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
     scenarioB = { Gb, Lb, BEPb, bdb, marginBPct, prB, bepArrB, contribPerUnitB };
   }
 
+  // Scenario B P&L
+  let plBRevenue = 0, plBCogs = 0, plBReturnCost = 0, plBNetProfit = 0, plBReturnPct = 0;
+  if (scenarioB && volB) {
+    plBRevenue = volB.adjVol * i.priceB;
+    plBCogs = volB.adjVol * i.cogsB;
+    plBReturnCost = volB.adjVol * Rw * scenarioB.Lb;
+    plBNetProfit = volB.adjVol * scenarioB.contribPerUnitB;
+    plBReturnPct = plBRevenue > 0 ? (plBReturnCost / plBRevenue * 100) : 0;
+  }
+
   // Tornado
   const tornadoResults = calcSensitivity(i, i.tornadoPct);
 
@@ -276,6 +279,11 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
     plReturnCost,
     plNetProfit,
     plReturnPct,
+    plBRevenue,
+    plBCogs,
+    plBReturnCost,
+    plBNetProfit,
+    plBReturnPct,
     safetyPP,
     tornadoResults,
     error: null,
@@ -283,7 +291,7 @@ function computeAll(i: SimulatorInputs): SimulatorDerived {
   };
 }
 
-function emptyDerived(error: string): SimulatorDerived {
+export function emptyDerived(error: string): SimulatorDerived {
   return {
     scenario: {
       G: 0, L: 0, BEP: 0, bd: null, lam: 0, Rw: 0, marginPct: '0.0',
@@ -293,6 +301,7 @@ function emptyDerived(error: string): SimulatorDerived {
     scenarioB: null,
     days: [], rr: [], pr: [], bepArr: [],
     plRevenue: 0, plReturnCost: 0, plNetProfit: 0, plReturnPct: 0,
+    plBRevenue: 0, plBCogs: 0, plBReturnCost: 0, plBNetProfit: 0, plBReturnPct: 0,
     safetyPP: 0, tornadoResults: [],
     error, warning: null,
   };

@@ -1,17 +1,9 @@
 import type { SimulatorInputs, TornadoResult } from '../types/simulator';
-import type { ReasonMultipliers } from './cost';
 import { TORNADO_VARS } from '../constants/presets';
 import { wR, calLam } from './weibull';
-import { calcL, calcWeightedL } from './cost';
+import { calcL, calcWeightedL, getReasonMultipliers } from './cost';
 import { calcVolume } from './volume';
 
-function getReasonMultipliers(inputs: SimulatorInputs): ReasonMultipliers {
-  return {
-    defect: { ship: inputs.rmShipDefect, pack: inputs.rmPackDefect, salv: inputs.rmSalvDefect, recov: inputs.rmRecovDefect },
-    mind: { ship: inputs.rmShipMind, pack: inputs.rmPackMind, salv: inputs.rmSalvMind, recov: inputs.rmRecovMind },
-    damage: { ship: inputs.rmShipDamage, pack: inputs.rmPackDamage, salv: inputs.rmSalvDamage, recov: inputs.rmRecovDamage },
-  };
-}
 
 function calcLForMode(
   inputs: SimulatorInputs,

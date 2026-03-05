@@ -139,6 +139,13 @@ export interface SimulatorDerived {
   plNetProfit: number;
   plReturnPct: number;
 
+  // P&L Scenario B
+  plBRevenue: number;
+  plBCogs: number;
+  plBReturnCost: number;
+  plBNetProfit: number;
+  plBReturnPct: number;
+
   // Safety
   safetyPP: number;
 

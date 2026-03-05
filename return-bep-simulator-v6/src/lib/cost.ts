@@ -1,4 +1,4 @@
-import type { RecoveryPath, ReasonBreakdown } from '../types/simulator';
+import type { RecoveryPath, ReasonBreakdown, SimulatorInputs } from '../types/simulator';
 
 export function calcL(
   cogs: number,
@@ -25,6 +25,14 @@ export function calcL(
     base = cogs * (1 - recoveryRate * refurbPct) + opsCost + refurbCost * refurbPct - adjSalv * salvagePct;
   }
   return Math.max(0, base - cxvAdj);
+}
+
+export function getReasonMultipliers(i: SimulatorInputs): ReasonMultipliers {
+  return {
+    defect: { ship: i.rmShipDefect, pack: i.rmPackDefect, salv: i.rmSalvDefect, recov: i.rmRecovDefect },
+    mind: { ship: i.rmShipMind, pack: i.rmPackMind, salv: i.rmSalvMind, recov: i.rmRecovMind },
+    damage: { ship: i.rmShipDamage, pack: i.rmPackDamage, salv: i.rmSalvDamage, recov: i.rmRecovDamage },
+  };
 }
 
 export interface ReasonMultipliers {
