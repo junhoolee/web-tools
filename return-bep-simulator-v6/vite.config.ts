@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-export default defineConfig(({ command }) => ({
+export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
@@ -13,5 +13,5 @@ export default defineConfig(({ command }) => ({
       },
     },
   ],
-  base: command === 'build' ? '/web-tools/return-bep-simulator-v6/dist/' : '/web-tools/return-bep-simulator-v6/',
-}))
+  base: '/web-tools/return-bep-simulator-v6/',
+})
