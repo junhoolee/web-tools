@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import TornadoSection from './TornadoSection';
+import MonteCarloSection from './MonteCarloSection';
 import type { SimulatorInputs, SimulatorAction, TornadoResult } from '../../types/simulator';
 
 interface Props {
@@ -22,9 +23,10 @@ export default function TornadoModal({ open, onClose, inputs, dispatch, results 
 
   return (
     <div className="modal-overlay open" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ width: 860 }}>
+      <div className="modal" style={{ width: 1100, maxWidth: '95vw', overflowY: 'auto', maxHeight: '90vh' }}>
         <button className="float-right bg-transparent border-none text-xl cursor-pointer text-text-faint hover:text-text p-0 leading-none" onClick={onClose}>&times;</button>
         <TornadoSection inputs={inputs} dispatch={dispatch} results={results} />
+        <MonteCarloSection inputs={inputs} />
       </div>
     </div>
   );
