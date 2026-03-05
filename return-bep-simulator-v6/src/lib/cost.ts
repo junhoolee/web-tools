@@ -51,10 +51,6 @@ export function calcWeightedL(
 ): { L: number; breakdown: ReasonBreakdown | null } {
   const damagePct = Math.max(0, 1 - defectPct - mindPct);
 
-  if (defectPct + damagePct === 0 && defectPct === 0) {
-    return { L: calcL(cogs, recoveryRate, refurbCost, salvage, salvagePct, recoveryPath, adjShip, adjLabor, adjPack, adjSalv, cxv), breakdown: null };
-  }
-
   const m = multipliers;
   const Ld = calcL(cogs, recoveryRate * m.defect.recov, refurbCost, salvage, salvagePct, recoveryPath, adjShip * m.defect.ship, adjLabor, adjPack * m.defect.pack, adjSalv * m.defect.salv, cxv);
   const Lm = calcL(cogs, recoveryRate * m.mind.recov, refurbCost, salvage, salvagePct, recoveryPath, adjShip * m.mind.ship, adjLabor, adjPack * m.mind.pack, adjSalv * m.mind.salv, cxv);

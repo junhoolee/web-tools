@@ -45,7 +45,6 @@ const baseInputs: SimulatorInputs = {
   cxvRepurchase: 10,
   cxvClv: 0,
   cxvPremium: 40,
-  fixedCost: 0,
   category: 'hybrid',
 };
 

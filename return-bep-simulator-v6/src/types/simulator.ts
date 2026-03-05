@@ -54,9 +54,6 @@ export interface SimulatorInputs {
   cxvClv: number;
   cxvPremium: number;
 
-  // Fixed cost
-  fixedCost: number;
-
   // Category
   category: string;
 }
@@ -134,9 +131,6 @@ export interface SimulatorDerived {
 
   // Tornado
   tornadoResults: TornadoResult[];
-
-  // Fixed cost BEP volume
-  bepVolume?: number;
 
   // Errors
   error: string | null;
