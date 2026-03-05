@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build && rm -rf ./assets && cp -r dist/assets ./assets",
-    "deploy": "npm run build && cp dist/index.html ./index.html",
+    "build": "tsc -b && vite build",
+    "deploy": "npm run build && cp dist/app.html ./index.html && rm -rf ./assets && cp -r dist/assets ./assets",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run"
