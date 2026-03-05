@@ -10,9 +10,10 @@ import SummaryTable from '../main/SummaryTable';
 interface Props {
   inputs: SimulatorInputs;
   derived: SimulatorDerived;
+  onUncertaintyOpen: () => void;
 }
 
-export default function MainPanel({ inputs, derived }: Props) {
+export default function MainPanel({ inputs, derived, onUncertaintyOpen }: Props) {
   return (
     <div className="flex-1 p-5 overflow-y-auto">
       {derived.error && (
@@ -30,8 +31,16 @@ export default function MainPanel({ inputs, derived }: Props) {
       {!derived.error && (
         <>
           <section className="mb-[14px] border border-border rounded-[12px] p-4 bg-surface">
-            <h2 className="text-[15px] font-bold text-text mb-3">임팩트</h2>
-            <PLPanel inputs={inputs} derived={derived} />
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-[15px] font-bold text-text">임팩트</h2>
+              <button
+                onClick={onUncertaintyOpen}
+                className="py-[5px] px-[10px] text-[11px] font-semibold border rounded-md cursor-pointer transition-all text-text-secondary border-border bg-white hover:bg-border-light"
+              >
+                불확실성 분석
+              </button>
+            </div>
+            <PLPanel derived={derived} />
             <MetricCards derived={derived} />
             <ReturnChart derived={derived} retWindow={inputs.retWindow} />
             <ProfitChart derived={derived} retWindow={inputs.retWindow} />

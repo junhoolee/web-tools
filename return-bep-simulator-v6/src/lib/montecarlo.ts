@@ -44,7 +44,7 @@ const EMPTY: MonteCarloResult = {
 };
 
 export function runMonteCarlo(
-  baseInputs: SimulatorInputs, pctRange: number, runs: number = 10000,
+  baseInputs: SimulatorInputs, pctRange: number, cogsRange: number, runs: number = 10000,
 ): MonteCarloResult {
   const baseLam = calLam(baseInputs.Rinf, baseInputs.k, baseInputs.r14);
   if (isNaN(baseLam)) return EMPTY;
@@ -57,7 +57,8 @@ export function runMonteCarlo(
     const copy = { ...baseInputs };
     for (const tv of TORNADO_VARS) {
       const orig = copy[tv.field as keyof SimulatorInputs] as number;
-      const delta = (Math.random() * 2 - 1) * mult;
+      const fieldMult = tv.field === 'cogs' ? cogsRange / 100 : mult;
+      const delta = (Math.random() * 2 - 1) * fieldMult;
       (copy as Record<string, unknown>)[tv.field] = orig * (1 + delta);
     }
 

@@ -19,7 +19,7 @@ const baseInputs: SimulatorInputs = {
 
 describe('runMonteCarlo', () => {
   it('returns correct number of samples', () => {
-    const result = runMonteCarlo(baseInputs, 20, 1000);
+    const result = runMonteCarlo(baseInputs, 20, 20, 1000);
     expect(result.runCount).toBeGreaterThan(0);
     expect(result.runCount).toBeLessThanOrEqual(1000);
     expect(result.bepSamples).toHaveLength(result.runCount);
@@ -27,7 +27,7 @@ describe('runMonteCarlo', () => {
   });
 
   it('BEP samples are in valid range (0-1)', () => {
-    const result = runMonteCarlo(baseInputs, 20, 500);
+    const result = runMonteCarlo(baseInputs, 20, 20, 500);
     for (const b of result.bepSamples) {
       expect(b).toBeGreaterThan(0);
       expect(b).toBeLessThanOrEqual(1);
@@ -35,7 +35,7 @@ describe('runMonteCarlo', () => {
   });
 
   it('percentiles are monotonically increasing for BEP', () => {
-    const result = runMonteCarlo(baseInputs, 20, 5000);
+    const result = runMonteCarlo(baseInputs, 20, 20, 5000);
     const p = result.percentiles;
     expect(p.p5.bep).toBeLessThanOrEqual(p.p25.bep);
     expect(p.p25.bep).toBeLessThanOrEqual(p.p50.bep);
@@ -45,14 +45,23 @@ describe('runMonteCarlo', () => {
 
   it('returns empty result for invalid inputs', () => {
     const invalid = { ...baseInputs, r14: 0.30 };
-    const result = runMonteCarlo(invalid, 20, 100);
+    const result = runMonteCarlo(invalid, 20, 20, 100);
     expect(result.runCount).toBe(0);
     expect(result.bepSamples).toHaveLength(0);
   });
 
   it('0% range produces near-identical samples', () => {
-    const result = runMonteCarlo(baseInputs, 0, 100);
+    const result = runMonteCarlo(baseInputs, 0, 0, 100);
     const unique = new Set(result.bepSamples.map(b => b.toFixed(4)));
     expect(unique.size).toBe(1);
+  });
+
+  it('cogsRange independently controls COGS variation', () => {
+    const narrow = runMonteCarlo(baseInputs, 5, 5, 2000);
+    const wide = runMonteCarlo(baseInputs, 5, 30, 2000);
+    // Wider COGS range should produce wider BEP spread
+    const narrowSpread = narrow.percentiles.p95.bep - narrow.percentiles.p5.bep;
+    const wideSpread = wide.percentiles.p95.bep - wide.percentiles.p5.bep;
+    expect(wideSpread).toBeGreaterThan(narrowSpread);
   });
 });
