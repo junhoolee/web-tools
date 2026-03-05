@@ -22,8 +22,11 @@ export default function WeibullModal({ open, onClose, inputs, dispatch }: Props)
   return (
     <div className="modal-overlay open" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ width: 420 }}>
-        <button className="float-right bg-transparent border-none text-xl cursor-pointer text-text-faint hover:text-text p-0 leading-none" onClick={onClose}>&times;</button>
-        <WeibullSection inputs={inputs} dispatch={dispatch} />
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-[15px] font-bold text-text m-0">반품 모델 (Weibull)</h3>
+          <button className="bg-transparent border-none text-xl cursor-pointer text-text-faint hover:text-text p-0 leading-none" onClick={onClose}>&times;</button>
+        </div>
+        <WeibullSection inputs={inputs} dispatch={dispatch} embedded />
       </div>
     </div>
   );

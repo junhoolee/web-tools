@@ -5,14 +5,14 @@ interface Props {
 }
 
 export default function SafetyGauge({ safetyPP, rinf, bep }: Props) {
-  const smColor = safetyPP >= 20 ? '#16a34a' : safetyPP >= 10 ? '#d97706' : '#dc2626';
+  const smColor = safetyPP >= 20 ? '#16a34a' : safetyPP >= 10 ? '#d97706' : '#f87171';
   const smText = safetyPP >= 0
     ? `${safetyPP.toFixed(1)}pp`
     : `−${Math.abs(safetyPP).toFixed(1)}pp`;
 
   const rinfPct = Math.min(rinf * 100, 100);
   const bepPct = Math.min(bep * 100, 100);
-  const safeColor = safetyPP >= 20 ? 'rgba(34,197,94,0.15)' : safetyPP >= 10 ? 'rgba(217,119,6,0.15)' : 'rgba(220,38,38,0.15)';
+  const safeColor = safetyPP >= 20 ? 'rgba(34,197,94,0.15)' : safetyPP >= 10 ? 'rgba(217,119,6,0.15)' : 'rgba(248,113,113,0.15)';
 
   const fillLeft = bep > rinf ? rinfPct : bepPct;
   const fillWidth = Math.abs(bepPct - rinfPct);

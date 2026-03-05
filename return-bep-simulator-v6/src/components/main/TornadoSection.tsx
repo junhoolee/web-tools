@@ -18,7 +18,8 @@ export default function TornadoSection({ inputs, dispatch, results }: Props) {
     <div>
       <div className="flex justify-between items-center mb-[10px]">
         <h3 className="text-[15px] font-bold text-text">민감도 분석 (Tornado Chart)</h3>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-text-faint">변동 폭</span>
           <select
             value={inputs.tornadoPct}
             onChange={e => dispatch({ type: 'SET_FIELD', field: 'tornadoPct', value: parseFloat(e.target.value) })}
@@ -28,7 +29,7 @@ export default function TornadoSection({ inputs, dispatch, results }: Props) {
             <option value={20}>±20%</option>
             <option value={30}>±30%</option>
           </select>
-          <span className="text-[10px] text-text-faint">각 변수를 현재값 대비 ±{inputs.tornadoPct}% 변동</span>
+          <span className="text-[10px] text-text-faint">적용 시 각 변수의 영향도</span>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-[14px] max-desktop:grid-cols-1">

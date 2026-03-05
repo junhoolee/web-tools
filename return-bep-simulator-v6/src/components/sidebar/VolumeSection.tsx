@@ -5,9 +5,10 @@ interface Props {
   inputs: SimulatorInputs;
   dispatch: React.Dispatch<SimulatorAction>;
   vol: VolumeResult;
+  embedded?: boolean;
 }
 
-export default function VolumeSection({ inputs, dispatch, vol }: Props) {
+export default function VolumeSection({ inputs, dispatch, vol, embedded }: Props) {
   const d = (field: keyof SimulatorInputs) => (v: number) =>
     dispatch({ type: 'SET_FIELD', field, value: v });
 
@@ -19,10 +20,12 @@ export default function VolumeSection({ inputs, dispatch, vol }: Props) {
   }
 
   return (
-    <div className="mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]">
-      <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
-        판매량 모델 (탄력성)
-      </div>
+    <div className={embedded ? '' : 'mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]'}>
+      {!embedded && (
+        <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
+          판매량 모델 (탄력성)
+        </div>
+      )}
       <FieldInput label="기준 판매량" unit="개/월" value={inputs.baseVol} onChange={d('baseVol')} step={100} min={0}
         tooltip={{ title: '기준 판매량 (Base Volume)', body: '참조 조건(판매가 $550, 반품기간 30일)에서의 월 판매량. 탄력성 모델의 기준점입니다.', analogy: '체중계의 \'표준 체중\'처럼, 모든 변화를 이 기준 대비로 환산한다.' }} />
       <div className="flex gap-2">

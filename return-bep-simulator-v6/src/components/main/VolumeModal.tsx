@@ -23,8 +23,11 @@ export default function VolumeModal({ open, onClose, inputs, dispatch, vol }: Pr
   return (
     <div className="modal-overlay open" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="modal" style={{ width: 420 }}>
-        <button className="float-right bg-transparent border-none text-xl cursor-pointer text-text-faint hover:text-text p-0 leading-none" onClick={onClose}>&times;</button>
-        <VolumeSection inputs={inputs} dispatch={dispatch} vol={vol} />
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-[15px] font-bold text-text m-0">판매량 모델 (탄력성)</h3>
+          <button className="bg-transparent border-none text-xl cursor-pointer text-text-faint hover:text-text p-0 leading-none" onClick={onClose}>&times;</button>
+        </div>
+        <VolumeSection inputs={inputs} dispatch={dispatch} vol={vol} embedded />
       </div>
     </div>
   );

@@ -22,7 +22,6 @@ export default function Sidebar({ inputs, dispatch, derived, onHelpOpen, onTorna
 
   const btnClass = "py-[5px] px-[10px] text-[11px] font-semibold border rounded-md cursor-pointer transition-all";
   const btnDefault = `${btnClass} text-text-secondary border-border bg-white hover:bg-border-light`;
-  const btnBlue = `${btnClass} text-blue border-blue bg-white hover:bg-blue hover:text-white`;
 
   return (
     <div className="w-[320px] bg-surface border-r border-border p-5 overflow-y-auto shrink-0 max-desktop:w-full max-desktop:border-r-0 max-desktop:border-b max-desktop:border-border">
@@ -41,14 +40,14 @@ export default function Sidebar({ inputs, dispatch, derived, onHelpOpen, onTorna
       {/* 모달 버튼 영역 */}
       <div className="flex gap-[6px] mb-5">
         <button onClick={onWeibullOpen} className={btnDefault} title="반품 모델 (Weibull) 설정">
-          반품 모델
+          반품 모델 조정
         </button>
         <button onClick={onVolumeOpen} className={btnDefault} title="판매량 모델 (탄력성) 설정">
-          판매량 모델
+          판매량 모델 조정
         </button>
         {derived.tornadoResults.length > 0 && (
-          <button onClick={onTornadoOpen} className={btnBlue} title="민감도 분석 (Tornado Chart)">
-            민감도
+          <button onClick={onTornadoOpen} className={btnDefault} title="민감도 분석 (Tornado Chart)">
+            민감도 조회
           </button>
         )}
       </div>

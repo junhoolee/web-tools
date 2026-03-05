@@ -4,17 +4,20 @@ import FieldInput from '../shared/FieldInput';
 interface Props {
   inputs: SimulatorInputs;
   dispatch: React.Dispatch<SimulatorAction>;
+  embedded?: boolean;
 }
 
-export default function WeibullSection({ inputs, dispatch }: Props) {
+export default function WeibullSection({ inputs, dispatch, embedded }: Props) {
   const d = (field: keyof SimulatorInputs) => (v: number) =>
     dispatch({ type: 'SET_FIELD', field, value: v });
 
   return (
-    <div className="mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]">
-      <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
-        반품 모델 (Weibull)
-      </div>
+    <div className={embedded ? '' : 'mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]'}>
+      {!embedded && (
+        <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
+          반품 모델 (Weibull)
+        </div>
+      )}
       <div className="mb-2">
         <label className="text-xs text-text-secondary mb-0.5 block">카테고리 프리셋</label>
         <select
