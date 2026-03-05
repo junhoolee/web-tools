@@ -1,33 +1,126 @@
 import { useState } from 'react';
-import type { SimulatorInputs, SimulatorAction, RecoveryPath } from '../../types/simulator';
+import type { SimulatorInputs, SimulatorAction, ReasonBreakdown } from '../../types/simulator';
 import FieldInput from '../shared/FieldInput';
+import ToggleSwitch from '../shared/ToggleSwitch';
 
 interface Props {
   inputs: SimulatorInputs;
   dispatch: React.Dispatch<SimulatorAction>;
-  displayL: string;
+  reasonBreakdown: ReasonBreakdown | null;
+  totalRecovery: number;
+  totalRecoveryB: number | null;
 }
 
-export default function ReturnRecoverySection({ inputs, dispatch, displayL }: Props) {
+function ReasonContent({ inputs, dispatch, reasonBreakdown }: { inputs: SimulatorInputs; dispatch: React.Dispatch<SimulatorAction>; reasonBreakdown: ReasonBreakdown | null }) {
+  const d = (field: keyof SimulatorInputs) => (v: number) =>
+    dispatch({ type: 'SET_FIELD', field, value: v });
+
+  const damagePct = 100 - inputs.rrDefect - inputs.rrMind;
+  const isError = damagePct < 0;
+
+  const rows: { label: string; fields: [keyof SimulatorInputs, keyof SimulatorInputs, keyof SimulatorInputs] }[] = [
+    { label: '잔존가치', fields: ['rmSalvDefect', 'rmSalvMind', 'rmSalvDamage'] },
+    { label: '원가회수율', fields: ['rmRecovDefect', 'rmRecovMind', 'rmRecovDamage'] },
+  ];
+
+  return (
+    <div>
+      <div className="text-[11px] font-medium text-text-secondary mb-1.5">사유별 발생 비율</div>
+      <div className="flex gap-[6px] mb-3">
+        {[
+          { label: '불량', color: 'text-red', field: 'rrDefect' as const, value: inputs.rrDefect },
+          { label: '변심', color: 'text-[#2563eb]', field: 'rrMind' as const, value: inputs.rrMind },
+        ].map(r => (
+          <div key={r.field} className="flex-1 bg-white border border-border rounded-md p-[6px_8px] text-center">
+            <div className={`text-[10px] font-bold mb-[3px] ${r.color}`}>{r.label}</div>
+            <input
+              type="number"
+              value={r.value}
+              min={0} max={100} step={5}
+              onChange={e => d(r.field)(parseFloat(e.target.value) || 0)}
+              className={`w-full py-1 px-[6px] border rounded text-xs text-center outline-none bg-white focus:border-blue focus:shadow-[0_0_0_2px_rgba(59,130,246,0.1)] ${isError ? 'border-red' : 'border-border'}`}
+            />
+          </div>
+        ))}
+        <div className="flex-1 bg-white border border-border rounded-md p-[6px_8px] text-center">
+          <div className="text-[10px] font-bold mb-[3px] text-amber">파손</div>
+          <div className="text-[13px] font-semibold text-blue py-1">{damagePct}%</div>
+        </div>
+      </div>
+
+      {isError && <div className="text-[10px] text-red mb-[6px]">합계가 100%를 초과합니다</div>}
+
+      <div className="text-[11px] font-medium text-text-secondary mb-1.5">사유별 승수 설정</div>
+      <div className="mb-2">
+        <table className="reason-multiplier-table">
+          <thead>
+            <tr>
+              <th></th>
+              <th className="col-defect">불량</th>
+              <th className="col-mind">변심</th>
+              <th className="col-damage">파손</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(row => (
+              <tr key={row.label}>
+                <td>{row.label}</td>
+                {row.fields.map(f => (
+                  <td key={f}>
+                    <input
+                      type="number"
+                      value={inputs[f] as number}
+                      min={0} max={3} step={0.1}
+                      onChange={e => d(f)(parseFloat(e.target.value) || 0)}
+                    />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="text-[11px] font-medium text-text-secondary mt-3 mb-1.5">사유별 반품 손실 /건</div>
+      <div className="bg-white border border-border rounded-md p-[8px_10px]">
+        {reasonBreakdown ? (
+          <>
+            {[
+              { label: '불량', color: '#dc2626', pct: reasonBreakdown.defect.pct, L: reasonBreakdown.defect.L },
+              { label: '변심', color: '#2563eb', pct: reasonBreakdown.mind.pct, L: reasonBreakdown.mind.L },
+              { label: '파손', color: '#d97706', pct: reasonBreakdown.damage.pct, L: reasonBreakdown.damage.L },
+            ].map(r => (
+              <div key={r.label} className="flex justify-between items-center text-[11px] py-0.5">
+                <span className="flex items-center gap-1 text-text-secondary">
+                  <span className="w-[6px] h-[6px] rounded-full inline-block" style={{ background: r.color }} />
+                  {r.label} ({Math.round(r.pct * 100)}%)
+                </span>
+                <span className="font-semibold text-red">${r.L.toFixed(0)}</span>
+              </div>
+            ))}
+            <div className="flex justify-between items-center text-xs font-bold pt-1 mt-1 border-t border-border">
+              <span className="text-text">가중평균 손실 (L)</span>
+              <span className="text-red text-[13px]">
+                ${(reasonBreakdown.defect.pct * reasonBreakdown.defect.L + reasonBreakdown.mind.pct * reasonBreakdown.mind.L + reasonBreakdown.damage.pct * reasonBreakdown.damage.L).toFixed(0)}/건
+              </span>
+            </div>
+          </>
+        ) : (
+          <div className="text-[11px] text-text-faint">비율을 입력하면 L 분해가 표시됩니다</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export default function ReturnRecoverySection({ inputs, dispatch, reasonBreakdown, totalRecovery, totalRecoveryB }: Props) {
   const [guideOpen, setGuideOpen] = useState(false);
 
   const d = (field: keyof SimulatorInputs) => (v: number) =>
     dispatch({ type: 'SET_FIELD', field, value: v });
 
-  const path = inputs.recoveryPath;
-  const isSalvage = path === 'salvage';
-  const isRefurb = path === 'refurb';
-  const isMixed = path === 'mixed';
-
-  const paths: { value: RecoveryPath; id: string; label: string; desc: string }[] = [
-    { value: 'salvage', id: 'rp-salvage', label: '경로 1: 부품/벌크 매각', desc: '잔존가치로 L 차감' },
-    { value: 'refurb', id: 'rp-refurb', label: '경로 2: 리퍼브 재판매', desc: '원가 회수 - 리퍼브 비용' },
-    { value: 'mixed', id: 'rp-mixed', label: '경로 3: 혼합', desc: '두 경로 비율 분배' },
-  ];
-
-  const descL = isSalvage ? '매출원가 + 운영비 - 잔존가치 - CXV'
-    : isRefurb ? '매출원가 × (1-회수율) + 운영비 + 리퍼브비 - CXV'
-    : '매각/리퍼브 혼합 비율 적용 - CXV';
+  const salvPct = Math.round(inputs.salvagePct * 100);
+  const refurbPct = 100 - salvPct;
 
   const retention = inputs.cxvRepurchase / 100;
   const clv = inputs.cxvClv;
@@ -37,64 +130,49 @@ export default function ReturnRecoverySection({ inputs, dispatch, displayL }: Pr
 
   return (
     <div className="mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]">
-      <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
-        반품 회수
+      <div className="flex items-center justify-between text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
+        <span>반품 회수 <span className="text-green font-normal">(+)</span></span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-green text-[12px]">${totalRecovery.toFixed(0)}</span>
+          {totalRecoveryB !== null && <span className="text-orange text-[12px]">/ ${totalRecoveryB.toFixed(0)}</span>}
+        </span>
       </div>
 
-      {/* 회수 경로 선택 */}
-      <div className="text-xs font-semibold text-text-secondary mb-2">회수 경로</div>
-      <div className="mb-2">
-        {paths.map(p => (
-          <label
-            key={p.value}
-            className={`flex items-center gap-2 py-[6px] px-[10px] rounded-md cursor-pointer text-xs transition-colors mb-0.5 ${path === p.value ? 'bg-[#eff6ff] text-[#1e40af] font-semibold' : 'text-text-secondary hover:bg-border-light'}`}
-          >
-            <input
-              type="radio"
-              name="recoveryPath"
-              value={p.value}
-              checked={path === p.value}
-              onChange={() => dispatch({ type: 'SET_RECOVERY_PATH', path: p.value })}
-              className="accent-blue m-0"
-            />
-            <span className="flex-1">
-              {p.label}<br />
-              <span className="text-[10px] text-text-faint font-normal">{p.desc}</span>
-            </span>
-          </label>
-        ))}
-      </div>
-
-      {/* 경로 1: 부품/벌크 매각 */}
-      <div className={`mb-2 p-[10px] rounded-lg border transition-colors ${isSalvage ? 'border-blue/30 bg-blue/[0.03]' : isRefurb ? 'border-border-light bg-border-light/30' : 'border-border-light bg-white'}`}>
-        <div className={`text-[11px] font-semibold mb-2 ${isRefurb ? 'text-text-faint' : 'text-blue'}`}>
-          경로 1 전용 — 부품/벌크 매각
+      {/* 처리 비율 배분 */}
+      <div className="text-xs font-semibold text-text-secondary mb-2">처리 비율 배분</div>
+      <div className="mb-3 px-1">
+        <div className="flex justify-between text-[11px] mb-1.5">
+          <span className={`font-semibold ${salvPct > 0 ? 'text-blue' : 'text-text-faint'}`}>부품/벌크 매각 {salvPct}%</span>
+          <span className={`font-semibold ${refurbPct > 0 ? 'text-blue' : 'text-text-faint'}`}>리퍼브 판매 {refurbPct}%</span>
         </div>
-        <div className="flex gap-2">
-          <div className="flex-1">
-            <FieldInput label="잔존가치" unit="$" value={inputs.salv} onChange={d('salv')} step={5} disabled={isRefurb}
-              tooltip={{ title: '잔존가치 (Salvage Value)', body: '반품 제품에서 회수 가능한 금액. 부품 매각·B-Stock 재판매 등으로 반품 손실(L)을 줄여줍니다.<br>▸ 영향: L 감소 → BEP 반품률 상승(유리)', analogy: '중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.' }} />
+        <input
+          type="range"
+          min={0} max={100} step={10}
+          value={salvPct}
+          onChange={e => dispatch({ type: 'SET_FIELD', field: 'salvagePct', value: Number(e.target.value) / 100 })}
+          className="w-full h-1.5 accent-blue cursor-pointer"
+        />
+      </div>
+
+      {/* 매각 / 리퍼브 변수 — 가로 배치 */}
+      <div className="flex gap-2 mb-2">
+        <div className={`flex-1 p-[10px] rounded-lg border transition-colors ${salvPct > 0 ? 'border-blue/30 bg-blue/[0.03]' : 'border-border-light bg-border-light/30'}`}>
+          <div className={`text-[11px] font-semibold mb-2 ${salvPct > 0 ? 'text-blue' : 'text-text-faint'}`}>
+            매각 변수
           </div>
-          <div className="flex-1">
-            <FieldInput label="매각 비율" unit="%"
-              value={inputs.salvagePct * 100}
-              onChange={v => dispatch({ type: 'SET_FIELD', field: 'salvagePct', value: v / 100 })}
-              step={10} min={0} max={100} disabled={!isMixed}
-              tooltip={{ title: '매각 비율 (Salvage Percentage)', body: '반품 제품 중 부품/벌크 매각 경로로 처리하는 비율. 경로 3(혼합) 선택 시 활성화됩니다.', analogy: '파이를 나누는 것처럼, 반품 제품을 \'부품으로 팔 것\'과 \'고쳐서 다시 팔 것\'으로 비율을 정한다.' }} />
+          <FieldInput label="잔존가치" unit="$" value={inputs.salv} onChange={d('salv')} step={5}
+            tooltip={{ title: '잔존가치 (Salvage Value)', body: '반품 제품에서 회수 가능한 금액. 부품 매각·B-Stock 재판매 등으로 반품 손실(L)을 줄여줍니다.<br>▸ 영향: L 감소 → BEP 반품률 상승(유리)', analogy: '중고 교과서처럼, 다 쓴 것 같아도 후배에게 팔면 커피 한 잔 값은 건진다.' }} />
+        </div>
+        <div className={`flex-1 p-[10px] rounded-lg border transition-colors ${refurbPct > 0 ? 'border-blue/30 bg-blue/[0.03]' : 'border-border-light bg-border-light/30'}`}>
+          <div className={`text-[11px] font-semibold mb-2 ${refurbPct > 0 ? 'text-blue' : 'text-text-faint'}`}>
+            리퍼브 변수
           </div>
+          <FieldInput label="원가 회수율" unit="%"
+            value={inputs.recoveryRate * 100}
+            onChange={v => dispatch({ type: 'SET_FIELD', field: 'recoveryRate', value: v / 100 })}
+            step={5} min={0} max={100}
+            tooltip={{ title: '원가 회수율 (Cost Recovery Rate)', body: '반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율.', analogy: '자동차 사고 후 폐차(잔존가치)와 수리 후 재판매(회수율)는 서로 다른 경로다.' }} />
         </div>
-      </div>
-
-      {/* 경로 2: 리퍼브 재판매 */}
-      <div className={`mb-2 p-[10px] rounded-lg border transition-colors ${isRefurb ? 'border-blue/30 bg-blue/[0.03]' : isSalvage ? 'border-border-light bg-border-light/30' : 'border-border-light bg-white'}`}>
-        <div className={`text-[11px] font-semibold mb-2 ${isSalvage ? 'text-text-faint' : 'text-blue'}`}>
-          경로 2 전용 — 리퍼브 재판매
-        </div>
-        <FieldInput label="원가 회수율" unit="%"
-          value={inputs.recoveryRate * 100}
-          onChange={v => dispatch({ type: 'SET_FIELD', field: 'recoveryRate', value: v / 100 })}
-          step={5} min={0} max={100} disabled={isSalvage}
-          tooltip={{ title: '원가 회수율 (Cost Recovery Rate)', body: '반품 제품을 리퍼브(재정비)하여 재판매할 때 회수 가능한 매출원가 비율.', analogy: '자동차 사고 후 폐차(잔존가치)와 수리 후 재판매(회수율)는 서로 다른 경로다.' }} />
       </div>
 
       {/* CXV */}
@@ -197,12 +275,18 @@ export default function ReturnRecoverySection({ inputs, dispatch, displayL }: Pr
         </div>
       )}
 
-      {/* 순 반품비용 요약 */}
-      <div className="mb-2 mt-3 pt-[10px] border-t border-border-light">
-        <label className="text-xs text-text-secondary">순 반품비용 <span className="text-[11px] text-text-faint">/건</span></label>
-        <div className="text-sm font-semibold text-blue py-1">{displayL}</div>
-        <div className="text-[10px] text-text-faint">{descL}</div>
+      {/* 사유별 세분화 */}
+      <div className={`mt-[10px] pt-[10px] ${inputs.reasonMode ? 'border-t border-border-light' : ''}`}>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] font-semibold text-text-muted">사유별 회수율 세분화</span>
+          <ToggleSwitch on={inputs.reasonMode} onToggle={() => dispatch({ type: 'TOGGLE_REASON' })} color="#0d9488" />
+        </div>
+
+        {inputs.reasonMode && (
+          <ReasonContent inputs={inputs} dispatch={dispatch} reasonBreakdown={reasonBreakdown} />
+        )}
       </div>
+
     </div>
   );
 }

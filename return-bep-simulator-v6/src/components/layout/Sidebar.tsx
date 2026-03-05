@@ -3,7 +3,6 @@ import MarginSection from '../sidebar/MarginSection';
 import ReturnPolicySection from '../sidebar/ReturnPolicySection';
 import ReturnCostSection from '../sidebar/ReturnCostSection';
 import ReturnRecoverySection from '../sidebar/ReturnRecoverySection';
-import ReasonSegmentation from '../sidebar/ReasonSegmentation';
 
 import FormulaReference from '../sidebar/FormulaReference';
 
@@ -18,7 +17,14 @@ interface Props {
 }
 
 export default function Sidebar({ inputs, dispatch, derived, onHelpOpen, onTornadoOpen, onWeibullOpen, onVolumeOpen }: Props) {
-  const { scenario } = derived;
+  const { scenario, scenarioB } = derived;
+  const compareOn = inputs.compareOn && scenarioB !== null;
+  const refurbPct = 1 - inputs.salvagePct;
+  const opsCostA = scenario.vol.adjShip + scenario.vol.adjLabor + scenario.vol.adjPack + inputs.refurbCost * refurbPct;
+  const totalCostA = inputs.cogs + opsCostA;
+  const totalRecoveryA = scenario.vol.adjSalv * inputs.salvagePct + inputs.recoveryRate * refurbPct * inputs.cogs + inputs.cxv;
+  const totalCostB = compareOn ? inputs.cogsB + opsCostA : 0;
+  const totalRecoveryB = compareOn ? scenario.vol.adjSalv * inputs.salvagePct + inputs.recoveryRate * refurbPct * inputs.cogsB + inputs.cxv : 0;
 
   const btnClass = "py-[5px] px-[10px] text-[11px] font-semibold border rounded-md cursor-pointer transition-all";
   const btnDefault = `${btnClass} text-text-secondary border-border bg-white hover:bg-border-light`;
@@ -55,9 +61,27 @@ export default function Sidebar({ inputs, dispatch, derived, onHelpOpen, onTorna
       <MarginSection inputs={inputs} dispatch={dispatch} marginPct={scenario.marginPct} />
       <ReturnPolicySection inputs={inputs} dispatch={dispatch} />
 
-      <ReturnCostSection inputs={inputs} dispatch={dispatch} />
-      <ReturnRecoverySection inputs={inputs} dispatch={dispatch} displayL={'$' + scenario.L.toFixed(0)} />
-      <ReasonSegmentation inputs={inputs} dispatch={dispatch} reasonBreakdown={scenario.reasonBreakdown} />
+      <ReturnCostSection inputs={inputs} dispatch={dispatch} totalCost={totalCostA} totalCostB={compareOn ? totalCostB : null} />
+      <ReturnRecoverySection inputs={inputs} dispatch={dispatch} reasonBreakdown={scenario.reasonBreakdown} totalRecovery={totalRecoveryA} totalRecoveryB={compareOn ? totalRecoveryB : null} />
+
+      {/* 순 반품비용 요약 (= 비용 - 회수) */}
+      <div className="mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]">
+        <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-2 pb-[7px] border-b border-border">
+          순 반품비용 <span className="text-text-faint font-normal">(=)</span>
+        </div>
+        <div className="flex items-baseline gap-2">
+          <div className="text-lg font-bold text-red">${scenario.L.toFixed(0)}</div>
+          <span className="text-[11px] text-text-faint">/건</span>
+          {compareOn && scenarioB && (
+            <>
+              <span className="text-text-faint mx-1">→</span>
+              <div className="text-lg font-bold text-orange">${scenarioB.Lb.toFixed(0)}</div>
+              <span className="text-[11px] text-text-faint">/건 (B)</span>
+            </>
+          )}
+        </div>
+        <div className="text-[10px] text-text-faint mt-1">비용(−) − 회수(+) = 건당 순손실</div>
+      </div>
 
       <FormulaReference />
     </div>

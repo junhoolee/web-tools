@@ -35,9 +35,14 @@ export default function MainPanel({ inputs, derived, onUncertaintyOpen }: Props)
               <h2 className="text-[15px] font-bold text-text">임팩트</h2>
               <button
                 onClick={onUncertaintyOpen}
-                className="py-[5px] px-[10px] text-[11px] font-semibold border rounded-md cursor-pointer transition-all text-text-secondary border-border bg-white hover:bg-border-light"
+                className="flex items-center gap-1 py-[5px] px-[10px] text-[11px] font-semibold border rounded-md cursor-pointer transition-all text-text-secondary border-border bg-white hover:bg-border-light"
               >
-                불확실성 분석
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="12" width="4" height="9" rx="1" />
+                  <rect x="10" y="5" width="4" height="16" rx="1" />
+                  <rect x="17" y="9" width="4" height="12" rx="1" />
+                </svg>
+                불확실성 분석{inputs.compareOn && <span className="text-orange"> (A/B)</span>}
               </button>
             </div>
             <PLPanel derived={derived} />

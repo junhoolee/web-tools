@@ -4,18 +4,23 @@ import FieldInput from '../shared/FieldInput';
 interface Props {
   inputs: SimulatorInputs;
   dispatch: React.Dispatch<SimulatorAction>;
+  totalCost: number;
+  totalCostB: number | null;
 }
 
-export default function ReturnCostSection({ inputs, dispatch }: Props) {
+export default function ReturnCostSection({ inputs, dispatch, totalCost, totalCostB }: Props) {
   const d = (field: keyof SimulatorInputs) => (v: number) =>
     dispatch({ type: 'SET_FIELD', field, value: v });
 
-  const isSalvage = inputs.recoveryPath === 'salvage';
-
   return (
     <div className="mb-3 bg-bg border border-[#eef1f6] rounded-[10px] p-[14px_14px_10px]">
-      <div className="text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
-        반품 비용
+      <div className="flex items-center justify-between text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
+        <span>반품 비용 <span className="text-red font-normal">(−)</span></span>
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-[10px] text-text-faint font-normal">매출원가 포함</span>
+          <span className="text-red text-[12px]">${totalCost.toFixed(0)}</span>
+          {totalCostB !== null && <span className="text-orange text-[12px]">/ ${totalCostB.toFixed(0)}</span>}
+        </span>
       </div>
       <div className="flex gap-2">
         <div className="flex-1">
@@ -34,8 +39,8 @@ export default function ReturnCostSection({ inputs, dispatch }: Props) {
         </div>
         <div className="flex-1">
           <FieldInput label="리퍼브 비용" unit="$/건" value={inputs.refurbCost}
-            onChange={d('refurbCost')} step={5} min={0} disabled={isSalvage}
-            tooltip={{ title: '리퍼브 비용 (Refurbishment Cost)', body: '반품 제품을 재정비하여 재판매 가능 상태로 만드는 데 드는 비용입니다.<br>▸ 경로 2(리퍼브) 또는 경로 3(혼합) 선택 시 활성화', analogy: '중고차 수리비처럼, 재판매 가격을 높이려면 먼저 수리비를 투자해야 한다.' }} />
+            onChange={d('refurbCost')} step={5} min={0}
+            tooltip={{ title: '리퍼브 비용 (Refurbishment Cost)', body: '반품 제품을 재정비하여 재판매 가능 상태로 만드는 데 드는 비용입니다.', analogy: '중고차 수리비처럼, 재판매 가격을 높이려면 먼저 수리비를 투자해야 한다.' }} />
         </div>
       </div>
     </div>

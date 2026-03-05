@@ -67,13 +67,15 @@ export function runMonteCarlo(
 
     const tVol = calcVolume(copy);
     const tG = copy.price - copy.cogs;
-    if (tG <= 0) continue;
-
     const tL = calcLForMode(copy, copy.cogs, tVol.adjShip, tVol.adjLabor, tVol.adjPack, tVol.adjSalv, copy.cxv);
-    const tBEP = tL <= 0 ? 1 : tG / (tG + tL);
     const tRw = wR(copy.retWindow, copy.Rinf, copy.k, tLam);
-    const tContrib = tG * (1 - tRw / tBEP);
+
+    // General profit formula: G - Rw × (G + L) — works for any G
+    const tContrib = tG - tRw * (tG + tL);
     const tNet = tVol.adjVol * tContrib;
+
+    // BEP only meaningful when G > 0
+    const tBEP = (tG > 0 && tG + tL > 0) ? tG / (tG + tL) : 0;
 
     bepSamples.push(tBEP);
     profitSamples.push(tNet);

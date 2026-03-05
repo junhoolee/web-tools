@@ -19,11 +19,11 @@ export const volumeMarkerPlugin: Plugin<'line'> = {
     ctx.beginPath();
     ctx.moveTo(x, yAxis.top);
     ctx.lineTo(x, yAxis.bottom);
-    ctx.strokeStyle = '#8b5cf6';
+    ctx.strokeStyle = '#111111';
     ctx.setLineDash([5, 4]);
     ctx.lineWidth = 1.5;
     ctx.stroke();
-    ctx.fillStyle = '#8b5cf6';
+    ctx.fillStyle = '#111111';
     ctx.font = 'bold 10px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText('반품기간 ' + day + '일', x, yAxis.top - 5);

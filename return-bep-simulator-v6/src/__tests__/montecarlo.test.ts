@@ -29,7 +29,7 @@ describe('runMonteCarlo', () => {
   it('BEP samples are in valid range (0-1)', () => {
     const result = runMonteCarlo(baseInputs, 20, 20, 500);
     for (const b of result.bepSamples) {
-      expect(b).toBeGreaterThan(0);
+      expect(b).toBeGreaterThanOrEqual(0);
       expect(b).toBeLessThanOrEqual(1);
     }
   });

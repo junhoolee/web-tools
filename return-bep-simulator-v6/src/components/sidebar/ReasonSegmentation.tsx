@@ -14,12 +14,9 @@ export default function ReasonSegmentation({ inputs, dispatch, reasonBreakdown }
   const damagePct = 100 - inputs.rrDefect - inputs.rrMind;
   const isError = damagePct < 0;
 
-  const isSalvage = inputs.recoveryPath === 'salvage';
-  const isRefurb = inputs.recoveryPath === 'refurb';
-
-  const rows: { label: string; fields: [keyof SimulatorInputs, keyof SimulatorInputs, keyof SimulatorInputs]; disabled: boolean }[] = [
-    { label: '잔존가치', fields: ['rmSalvDefect', 'rmSalvMind', 'rmSalvDamage'], disabled: isRefurb },
-    { label: '원가회수율', fields: ['rmRecovDefect', 'rmRecovMind', 'rmRecovDamage'], disabled: isSalvage },
+  const rows: { label: string; fields: [keyof SimulatorInputs, keyof SimulatorInputs, keyof SimulatorInputs] }[] = [
+    { label: '잔존가치', fields: ['rmSalvDefect', 'rmSalvMind', 'rmSalvDamage'] },
+    { label: '원가회수율', fields: ['rmRecovDefect', 'rmRecovMind', 'rmRecovDamage'] },
   ];
 
   return (
@@ -75,7 +72,7 @@ export default function ReasonSegmentation({ inputs, dispatch, reasonBreakdown }
               </thead>
               <tbody>
                 {rows.map(row => (
-                  <tr key={row.label} className={row.disabled ? 'opacity-40' : ''}>
+                  <tr key={row.label}>
                     <td>{row.label}</td>
                     {row.fields.map(f => (
                       <td key={f}>
@@ -85,7 +82,6 @@ export default function ReasonSegmentation({ inputs, dispatch, reasonBreakdown }
                           min={0}
                           max={3}
                           step={0.1}
-                          disabled={row.disabled}
                           onChange={e => d(f)(parseFloat(e.target.value) || 0)}
                         />
                       </td>

@@ -86,7 +86,7 @@ const refLinePlugin: Plugin<'bar'> = {
       ctx.fillStyle = '#dc2626';
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(label, pixelX, chartArea.top - 4);
+      ctx.fillText(label, pixelX, chartArea.top - 6);
     }
     ctx.restore();
   },
@@ -102,9 +102,10 @@ interface HistogramChartProps {
   redColor: string;
   isRedBin: (bin: Bin) => boolean;
   formatTooltipX: (bin: Bin) => string;
+  formatTickX?: (bin: Bin) => string;
 }
 
-function HistogramChart({ bins, refValue, refLabel, color, redColor, isRedBin, formatTooltipX }: HistogramChartProps) {
+function HistogramChart({ bins, refValue, refLabel, color, redColor, isRedBin, formatTooltipX, formatTickX }: HistogramChartProps) {
   const labels = bins.map((_, i) => i.toString());
   const bgColors = bins.map(b => isRedBin(b) ? redColor : color);
 
@@ -122,6 +123,7 @@ function HistogramChart({ bins, refValue, refLabel, color, redColor, isRedBin, f
   const options: ChartOptions<'bar'> = {
     responsive: true,
     maintainAspectRatio: false,
+    layout: { padding: { top: 16 } },
     plugins: {
       legend: { display: false },
       tooltip: {
@@ -146,6 +148,7 @@ function HistogramChart({ bins, refValue, refLabel, color, redColor, isRedBin, f
             if (index % 5 !== 0) return '';
             const b = bins[index];
             if (!b) return '';
+            if (formatTickX) return formatTickX(b);
             const mid = (b.lo + b.hi) / 2;
             if (Math.abs(mid) < 1) return (mid * 100).toFixed(0) + '%';
             if (Math.abs(mid) >= 1000) return (mid / 1000).toFixed(0) + 'k';
@@ -168,14 +171,19 @@ function HistogramChart({ bins, refValue, refLabel, color, redColor, isRedBin, f
 
 /* -- PercentileTable ------------------------------------------ */
 
-function PercentileTable({ result }: { result: MonteCarloResult }) {
+function fmtProfitPct(profit: number, revenue: number): string {
+  if (revenue <= 0) return '-';
+  return (profit / revenue * 100).toFixed(1) + '%';
+}
+
+function PercentileTable({ result, revenue }: { result: MonteCarloResult; revenue: number }) {
   const { percentiles: p } = result;
   const cols = [
-    { key: 'p5', label: '5%', data: p.p5 },
-    { key: 'p25', label: '25%', data: p.p25 },
-    { key: 'p50', label: '50%', data: p.p50 },
-    { key: 'p75', label: '75%', data: p.p75 },
-    { key: 'p95', label: '95%', data: p.p95 },
+    { key: 'p5', label: '최악 5%', data: p.p5 },
+    { key: 'p25', label: '비관 25%', data: p.p25 },
+    { key: 'p50', label: '중앙값', data: p.p50 },
+    { key: 'p75', label: '낙관 75%', data: p.p75 },
+    { key: 'p95', label: '최선 95%', data: p.p95 },
   ];
 
   const highlightCls = 'bg-blue/[0.06]';
@@ -215,7 +223,8 @@ function PercentileTable({ result }: { result: MonteCarloResult }) {
                 key={c.key}
                 className={`text-center py-1.5 px-2 border-b border-border tabular-nums ${c.key === 'p50' ? highlightCls : ''}`}
               >
-                {fmtProfit(c.data.profit)}
+                <div className={c.data.profit < 0 ? 'text-red' : 'text-green'}>{fmtProfit(c.data.profit)}</div>
+                <div className={`text-[10px] ${c.data.profit < 0 ? 'text-red/60' : 'text-green/60'}`}>{fmtProfitPct(c.data.profit, revenue)}</div>
               </td>
             ))}
           </tr>
@@ -267,6 +276,10 @@ export default function UncertaintyModal({ open, onClose, inputs }: Props) {
   const [otherRange, setOtherRange] = useState(10);
   const [cogsRange, setCogsRange] = useState(20);
   const [result, setResult] = useState<MonteCarloResult | null>(null);
+  const [resultB, setResultB] = useState<MonteCarloResult | null>(null);
+
+  const showB = inputs.compareOn && inputs.priceB > 0 && inputs.priceB > inputs.cogsB;
+  const runsPerSim = showB ? 5000 : 10000;
 
   // Escape key closes modal
   useEffect(() => {
@@ -281,17 +294,29 @@ export default function UncertaintyModal({ open, onClose, inputs }: Props) {
     if (!open) return;
 
     const run = () => {
-      const mc = runMonteCarlo(inputs, otherRange, cogsRange, 10000);
+      const mc = runMonteCarlo(inputs, otherRange, cogsRange, runsPerSim);
       setResult(mc);
+      if (showB) {
+        const inputsB = { ...inputs, price: inputs.priceB, cogs: inputs.cogsB };
+        const mcB = runMonteCarlo(inputsB, otherRange, cogsRange, runsPerSim);
+        setResultB(mcB);
+      } else {
+        setResultB(null);
+      }
     };
 
-    run(); // immediate first run
+    run();
     const id = setInterval(run, 1000);
     return () => clearInterval(id);
-  }, [open, inputs, otherRange, cogsRange]);
+  }, [open, inputs, otherRange, cogsRange, showB, runsPerSim]);
 
   const bepBins = useMemo(() => result ? buildHistogram(result.bepSamples, 30) : [], [result]);
   const profitBins = useMemo(() => result ? buildHistogram(result.profitSamples, 30) : [], [result]);
+  const estRevenue = inputs.price * inputs.baseVol;
+
+  const bepBinsB = useMemo(() => resultB ? buildHistogram(resultB.bepSamples, 30) : [], [resultB]);
+  const profitBinsB = useMemo(() => resultB ? buildHistogram(resultB.profitSamples, 30) : [], [resultB]);
+  const estRevenueB = inputs.priceB * inputs.baseVol;
 
   if (!open) return null;
 
@@ -308,47 +333,88 @@ export default function UncertaintyModal({ open, onClose, inputs }: Props) {
         </div>
 
         <p className="text-[11px] text-text-faint mb-4">
-          기타 변수 ±{otherRange}%, 매출원가 ±{cogsRange}% 범위에서 10,000회 시뮬레이션 (1초마다 자동 갱신)
+          기타 변수 ±{otherRange}%, 매출원가 ±{cogsRange}% 범위에서 {runsPerSim.toLocaleString()}회 시뮬레이션 (1초마다 자동 갱신)
         </p>
 
         {result && result.runCount > 0 && (
           <>
-            <p className="text-[11px] text-text-secondary mb-3">
-              {result.runCount.toLocaleString()}회 시뮬레이션 (1초마다 자동 갱신)
-            </p>
+            <div className={showB ? 'border border-border rounded-[10px] p-4 bg-surface' : ''}>
+              {showB && <h4 className="text-[13px] font-bold text-text mb-2">시나리오 A (${inputs.price} / ${inputs.cogs})</h4>}
+              <div className="grid grid-cols-2 gap-[14px] max-desktop:grid-cols-1">
+                <div>
+                  <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">BEP 반품률 분포</h4>
+                  <div className="relative h-[220px]">
+                    <HistogramChart
+                      bins={bepBins}
+                      refValue={inputs.Rinf}
+                      refLabel={`최대반품률 ${fmtPct(inputs.Rinf)}`}
+                      color="#3b82f680"
+                      redColor="#ef444480"
+                      isRedBin={b => (b.lo + b.hi) / 2 > inputs.Rinf}
+                      formatTooltipX={b => `${fmtPct(b.lo)} – ${fmtPct(b.hi)}`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">월간 순이익 분포</h4>
+                  <div className="relative h-[220px]">
+                    <HistogramChart
+                      bins={profitBins}
+                      refValue={0}
+                      refLabel="손익분기 $0"
+                      color="#22c55e80"
+                      redColor="#ef444480"
+                      isRedBin={b => (b.lo + b.hi) / 2 < 0}
+                      formatTooltipX={b => `${fmtProfit(b.lo)} – ${fmtProfit(b.hi)}${estRevenue > 0 ? ` (${fmtProfitPct(((b.lo + b.hi) / 2), estRevenue)})` : ''}`}
+                      formatTickX={estRevenue > 0 ? (b => fmtProfitPct((b.lo + b.hi) / 2, estRevenue)) : undefined}
+                    />
+                  </div>
+                </div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-[14px] max-desktop:grid-cols-1">
-              <div>
-                <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">BEP 반품률 분포</h4>
-                <div className="relative h-[220px]">
-                  <HistogramChart
-                    bins={bepBins}
-                    refValue={inputs.Rinf}
-                    refLabel={`R∞ ${fmtPct(inputs.Rinf)}`}
-                    color="#3b82f680"
-                    redColor="#ef444480"
-                    isRedBin={b => (b.lo + b.hi) / 2 > inputs.Rinf}
-                    formatTooltipX={b => `${fmtPct(b.lo)} – ${fmtPct(b.hi)}`}
-                  />
-                </div>
-              </div>
-              <div>
-                <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">월간 순이익 분포</h4>
-                <div className="relative h-[220px]">
-                  <HistogramChart
-                    bins={profitBins}
-                    refValue={0}
-                    refLabel="0"
-                    color="#22c55e80"
-                    redColor="#ef444480"
-                    isRedBin={b => (b.lo + b.hi) / 2 < 0}
-                    formatTooltipX={b => `${fmtProfit(b.lo)} – ${fmtProfit(b.hi)}`}
-                  />
-                </div>
-              </div>
+              <PercentileTable result={result} revenue={estRevenue} />
             </div>
+          </>
+        )}
 
-            <PercentileTable result={result} />
+        {showB && resultB && resultB.runCount > 0 && (
+          <>
+            <div className="mt-6 border border-orange/30 rounded-[10px] p-4 bg-orange/[0.03]">
+              <h4 className="text-[13px] font-bold text-orange mb-2">시나리오 B (${inputs.priceB} / ${inputs.cogsB})</h4>
+              <div className="grid grid-cols-2 gap-[14px] max-desktop:grid-cols-1">
+                <div>
+                  <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">BEP 반품률 분포</h4>
+                  <div className="relative h-[220px]">
+                    <HistogramChart
+                      bins={bepBinsB}
+                      refValue={inputs.Rinf}
+                      refLabel={`최대반품률 ${fmtPct(inputs.Rinf)}`}
+                      color="#f97316a0"
+                      redColor="#ef444480"
+                      isRedBin={b => (b.lo + b.hi) / 2 > inputs.Rinf}
+                      formatTooltipX={b => `${fmtPct(b.lo)} – ${fmtPct(b.hi)}`}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-semibold text-text-muted mb-[6px] text-center">월간 순이익 분포</h4>
+                  <div className="relative h-[220px]">
+                    <HistogramChart
+                      bins={profitBinsB}
+                      refValue={0}
+                      refLabel="손익분기 $0"
+                      color="#22c55e80"
+                      redColor="#ef444480"
+                      isRedBin={b => (b.lo + b.hi) / 2 < 0}
+                      formatTooltipX={b => `${fmtProfit(b.lo)} – ${fmtProfit(b.hi)}${estRevenueB > 0 ? ` (${fmtProfitPct(((b.lo + b.hi) / 2), estRevenueB)})` : ''}`}
+                      formatTickX={estRevenueB > 0 ? (b => fmtProfitPct((b.lo + b.hi) / 2, estRevenueB)) : undefined}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <PercentileTable result={resultB} revenue={estRevenueB} />
+            </div>
           </>
         )}
       </div>

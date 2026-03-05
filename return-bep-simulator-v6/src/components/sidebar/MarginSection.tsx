@@ -30,7 +30,7 @@ export default function MarginSection({ inputs, dispatch, marginPct }: Props) {
         <div className="flex items-center justify-between text-[13px] font-bold text-text tracking-[0.2px] mb-3 pb-[7px] border-b border-border">
           <span>마진 설정{inputs.compareOn ? ' (A)' : ''}</span>
           <div className="flex items-center gap-[6px]">
-            <span className="text-[10px] font-normal text-text-faint">비교</span>
+            <span className="text-[10px] font-normal text-text-faint">비교모드</span>
             <ToggleSwitch on={inputs.compareOn} onToggle={() => dispatch({ type: 'TOGGLE_COMPARE' })} />
           </div>
         </div>
