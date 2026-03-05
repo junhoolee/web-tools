@@ -6,37 +6,25 @@ import { runMonteCarlo } from '../../lib/montecarlo';
 
 /* ── helpers ─────────────────────────────────────────────── */
 
-interface Bin { lo: number; hi: number; count: number; label: string }
+interface Bin { lo: number; hi: number; count: number }
 
 function buildHistogram(samples: number[], bins = 30): Bin[] {
   if (samples.length === 0) return [];
-  const min = Math.min(...samples);
-  const max = Math.max(...samples);
+  let min = Infinity, max = -Infinity;
+  for (const v of samples) { if (v < min) min = v; if (v > max) max = v; }
   const range = max - min || 1;
   const step = range / bins;
   const result: Bin[] = Array.from({ length: bins }, (_, i) => ({
     lo: min + step * i,
     hi: min + step * (i + 1),
     count: 0,
-    label: '',
   }));
   for (const v of samples) {
     let idx = Math.floor((v - min) / step);
     if (idx >= bins) idx = bins - 1;
     result[idx].count++;
   }
-  for (const b of result) {
-    b.label = formatBinLabel(b.lo, b.hi);
-  }
   return result;
-}
-
-function formatBinLabel(lo: number, hi: number): string {
-  const fmt = (v: number) => {
-    if (Math.abs(v) >= 1) return v.toFixed(1);
-    return (v * 100).toFixed(1) + '%';
-  };
-  return `${fmt(lo)} – ${fmt(hi)}`;
 }
 
 function fmtPct(v: number): string {
@@ -194,7 +182,7 @@ function PercentileTable({ result }: { result: MonteCarloResult }) {
     { key: 'p95', label: '95%', data: p.p95 },
   ];
 
-  const highlightCls = 'bg-blue-50';
+  const highlightCls = 'bg-blue/[0.06]';
 
   return (
     <div className="mt-4 overflow-x-auto">
@@ -266,7 +254,7 @@ export default function MonteCarloSection({ inputs }: { inputs: SimulatorInputs 
         <button
           onClick={handleRun}
           disabled={running}
-          className="py-1.5 px-4 bg-blue-500 text-white text-[12px] font-medium rounded-md border-none cursor-pointer hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="py-1.5 px-4 bg-blue text-white text-[12px] font-medium rounded-md border-none cursor-pointer hover:bg-blue/90 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {running ? '계산 중...' : result ? '재실행 (10,000회)' : '실행 (10,000회)'}
         </button>
