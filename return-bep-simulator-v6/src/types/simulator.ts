@@ -109,6 +109,19 @@ export interface TornadoResult {
   profitSpan: number;
 }
 
+export interface MonteCarloResult {
+  bepSamples: number[];
+  profitSamples: number[];
+  percentiles: {
+    p5: { bep: number; profit: number };
+    p25: { bep: number; profit: number };
+    p50: { bep: number; profit: number };
+    p75: { bep: number; profit: number };
+    p95: { bep: number; profit: number };
+  };
+  runCount: number;
+}
+
 export interface SimulatorDerived {
   scenario: ScenarioResult;
   scenarioB: ScenarioBResult | null;
